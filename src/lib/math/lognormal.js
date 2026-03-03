@@ -1,7 +1,7 @@
 import { jStat } from 'jstat';
-import { generateXValues } from './sampling.js';
 
 const Z_95 = 1.6449; // inverse normal CDF at 0.95
+const NUM_POINTS = 500;
 
 /**
  * Compute Lognormal distribution PDF and CDF values.
@@ -19,7 +19,17 @@ export function computeLognormal(params) {
 
   if (sigma <= 0 || !isFinite(mu) || !isFinite(sigma)) return null;
 
-  const xValues = generateXValues(0.001, p95 * 2);
+  // Use quantile-based bounds so the CDF spans [~0.001, ~0.999],
+  // and log-space the grid so resolution is uniform across orders of magnitude.
+  const lower = jStat.lognormal.inv(0.001, mu, sigma);
+  const upper = jStat.lognormal.inv(0.999, mu, sigma);
+  const logLower = Math.log(lower);
+  const logUpper = Math.log(upper);
+  const logStep = (logUpper - logLower) / (NUM_POINTS - 1);
+  const xValues = [];
+  for (let i = 0; i < NUM_POINTS; i++) {
+    xValues.push(Math.exp(logLower + i * logStep));
+  }
   const yPdf = [];
   const yCdf = [];
 
