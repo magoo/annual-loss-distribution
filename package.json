@@ -1,0 +1,23 @@
+{
+  "name": "javascript-distributions",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "svelte": "^5.53.6",
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "jstat": "^1.9.6",
+    "plotly.js-basic-dist-min": "^3.4.0"
+  }
+}
