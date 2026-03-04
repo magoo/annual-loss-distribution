@@ -81,13 +81,13 @@
       },
       yaxis: {
         title: {
-          text: isPdf ? 'Density' : 'Cumulative Probability',
+          text: isPdf ? 'Likelihood' : 'Cumulative Probability',
           font: { size: 12, color: '#6b7280', family: 'Inter, sans-serif' },
         },
         gridcolor: '#f0f0f0',
         zerolinecolor: '#e5e7eb',
         tickfont: { size: 12, color: '#6b7280', family: 'Inter, sans-serif' },
-        ...(isPdf ? {} : { range: [0, 1.05] }),
+        ...(isPdf ? { showticklabels: false } : { range: [0, 1.05] }),
       },
       showlegend: false,
       hovermode: 'closest',

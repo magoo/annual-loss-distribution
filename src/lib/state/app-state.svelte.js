@@ -9,10 +9,16 @@ let frequencyParams = $state({ ...SECTIONS.frequency.defaults });
 let costParams = $state({ ...SECTIONS.cost.defaults });
 
 // --- Panel mode state ---
-let panelModeActive = $state(false);
 let frequencyPanelists = $state([]);
 let costPanelists = $state([]);
 let nextPanelistId = $state(1);
+
+// Per-section panel active (derived from panelist count)
+const frequencyPanelActive = $derived(frequencyPanelists.length >= 2);
+const costPanelActive = $derived(costPanelists.length >= 2);
+const activePanelActive = $derived(
+  activeSection === 'frequency' ? frequencyPanelActive : costPanelActive
+);
 
 // --- Helpers ---
 const activePanelists = $derived.by(() => {
@@ -66,12 +72,12 @@ function computeAnalytics(panelistList, sectionKey) {
 
 // --- Derived state ---
 const effectiveFrequencyParams = $derived.by(() => {
-  if (!panelModeActive || frequencyPanelists.length === 0) return frequencyParams;
+  if (frequencyPanelists.length < 2) return frequencyParams;
   return averageParams(frequencyPanelists, 'frequency');
 });
 
 const effectiveCostParams = $derived.by(() => {
-  if (!panelModeActive || costPanelists.length === 0) return costParams;
+  if (costPanelists.length < 2) return costParams;
   return averageParams(costPanelists, 'cost');
 });
 
@@ -110,15 +116,13 @@ const chartData = $derived.by(() => {
 });
 
 const panelAnalytics = $derived.by(() => {
-  if (!panelModeActive) return null;
   if (activeSection === 'loss') {
-    if (frequencyPanelists.length === 0 && costPanelists.length === 0) return null;
-    return {
-      frequency: frequencyPanelists.length > 0 ? computeAnalytics(frequencyPanelists, 'frequency') : null,
-      cost: costPanelists.length > 0 ? computeAnalytics(costPanelists, 'cost') : null,
-    };
+    const freq = frequencyPanelists.length >= 2 ? computeAnalytics(frequencyPanelists, 'frequency') : null;
+    const cost = costPanelists.length >= 2 ? computeAnalytics(costPanelists, 'cost') : null;
+    if (!freq && !cost) return null;
+    return { frequency: freq, cost: cost };
   }
-  if (activePanelists.length === 0) return null;
+  if (activePanelists.length < 2) return null;
   return computeAnalytics(activePanelists, activeSection);
 });
 
@@ -144,51 +148,49 @@ function setParam(key, value) {
   }
 }
 
-function makeDefaultPanelists(sectionKey) {
-  return [
-    {
-      id: nextPanelistId++,
-      name: 'Expert 1',
-      params: { ...SECTIONS[sectionKey].defaults },
-    },
-    {
-      id: nextPanelistId++,
-      name: 'Expert 2',
-      params: { ...SECTIONS[sectionKey].defaults },
-    },
-  ];
-}
-
-function togglePanelMode() {
-  panelModeActive = !panelModeActive;
-  if (panelModeActive && frequencyPanelists.length === 0 && costPanelists.length === 0) {
-    frequencyPanelists = makeDefaultPanelists('frequency');
-    costPanelists = makeDefaultPanelists('cost');
-  }
-}
-
 function addPanelist() {
-  const active = getActivePanelists();
-  const sectionKey = activeSection;
-  const newPanelist = {
-    id: nextPanelistId++,
-    name: `Expert ${active.length + 1}`,
-    params: { ...SECTIONS[sectionKey].defaults },
-  };
   if (activeSection === 'frequency') {
-    frequencyPanelists = [...frequencyPanelists, newPanelist];
+    if (frequencyPanelists.length === 0) {
+      frequencyPanelists = [
+        { id: nextPanelistId++, name: 'Expert 1', params: { ...frequencyParams } },
+        { id: nextPanelistId++, name: 'Expert 2', params: { ...SECTIONS.frequency.defaults } },
+      ];
+      return;
+    }
+    frequencyPanelists = [...frequencyPanelists, {
+      id: nextPanelistId++,
+      name: `Expert ${frequencyPanelists.length + 1}`,
+      params: { ...SECTIONS.frequency.defaults },
+    }];
   } else if (activeSection === 'cost') {
-    costPanelists = [...costPanelists, newPanelist];
+    if (costPanelists.length === 0) {
+      costPanelists = [
+        { id: nextPanelistId++, name: 'Expert 1', params: { ...costParams } },
+        { id: nextPanelistId++, name: 'Expert 2', params: { ...SECTIONS.cost.defaults } },
+      ];
+      return;
+    }
+    costPanelists = [...costPanelists, {
+      id: nextPanelistId++,
+      name: `Expert ${costPanelists.length + 1}`,
+      params: { ...SECTIONS.cost.defaults },
+    }];
   }
 }
 
 function removePanelist(id) {
-  const active = getActivePanelists();
-  if (active.length <= 2) return;
   if (activeSection === 'frequency') {
-    frequencyPanelists = frequencyPanelists.filter((p) => p.id !== id);
+    if (frequencyPanelists.length <= 2) {
+      frequencyPanelists = [];
+    } else {
+      frequencyPanelists = frequencyPanelists.filter((p) => p.id !== id);
+    }
   } else if (activeSection === 'cost') {
-    costPanelists = costPanelists.filter((p) => p.id !== id);
+    if (costPanelists.length <= 2) {
+      costPanelists = [];
+    } else {
+      costPanelists = costPanelists.filter((p) => p.id !== id);
+    }
   }
 }
 
@@ -218,18 +220,19 @@ export function getState() {
     get activeSection() { return activeSection; },
     get view() { return view; },
     get params() { return activeSection === 'frequency' ? frequencyParams : costParams; },
-    get panelModeActive() { return panelModeActive; },
+    get panelActive() { return activePanelActive; },
     get panelists() { return activePanelists; },
     get validationErrors() { return validationErrors; },
     get isValid() { return isValid; },
     get effectiveParams() { return effectiveParams; },
+    get effectiveFrequencyParams() { return effectiveFrequencyParams; },
+    get effectiveCostParams() { return effectiveCostParams; },
     get chartData() { return chartData; },
     get panelAnalytics() { return panelAnalytics; },
     get useDollars() { return useDollars; },
     setActiveSection,
     setView,
     setParam,
-    togglePanelMode,
     addPanelist,
     removePanelist,
     setPanelistName,

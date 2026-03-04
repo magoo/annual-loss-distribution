@@ -26,7 +26,7 @@ export const SECTIONS = {
     guidance: 'When this incident occurs, what\'s the typical cost? (P50) In a worst-case scenario — one that only happens 1 in 20 times — what would the cost be? (P95)',
   },
   loss: {
-    label: 'Annual Loss',
+    label: 'Calculate',
     useDollars: true,
     defaults: {},
     fields: [],

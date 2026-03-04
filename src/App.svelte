@@ -4,7 +4,9 @@
   import DistributionSelector from './lib/components/DistributionSelector.svelte';
   import ParameterInputs from './lib/components/ParameterInputs.svelte';
   import PanelMode from './lib/components/PanelMode.svelte';
+  import PanelAnalytics from './lib/components/PanelAnalytics.svelte';
   import ConfidenceInterval from './lib/components/ConfidenceInterval.svelte';
+  import MonteCarloDescription from './lib/components/MonteCarloDescription.svelte';
   import { getState } from './lib/state/app-state.svelte.js';
 
   const state = getState();
@@ -22,7 +24,7 @@
       onselect={state.setActiveSection}
     />
 
-    {#if !state.panelModeActive && state.activeSection !== 'loss'}
+    {#if !state.panelActive && state.activeSection !== 'loss'}
       <ParameterInputs
         activeSection={state.activeSection}
         params={state.params}
@@ -31,18 +33,31 @@
       />
     {/if}
 
-    <PanelMode
-      active={state.panelModeActive}
-      panelists={state.panelists}
-      activeSection={state.activeSection}
-      analytics={state.panelAnalytics}
-      ontoggle={state.togglePanelMode}
-      onadd={state.addPanelist}
-      onremove={state.removePanelist}
-      onnamchange={state.setPanelistName}
-      onparamchange={state.setPanelistParam}
-    />
+    {#if state.activeSection !== 'loss'}
+      <PanelMode
+        panelActive={state.panelActive}
+        panelists={state.panelists}
+        activeSection={state.activeSection}
+        analytics={state.panelAnalytics}
+        onadd={state.addPanelist}
+        onremove={state.removePanelist}
+        onnamchange={state.setPanelistName}
+        onparamchange={state.setPanelistParam}
+      />
+    {/if}
+
+    {#if state.activeSection === 'loss' && state.panelAnalytics}
+      <PanelAnalytics sectionKey="frequency" analytics={state.panelAnalytics?.frequency} />
+      <PanelAnalytics sectionKey="cost" analytics={state.panelAnalytics?.cost} />
+    {/if}
   </section>
+
+  {#if state.activeSection === 'loss'}
+    <MonteCarloDescription
+      frequencyParams={state.effectiveFrequencyParams}
+      costParams={state.effectiveCostParams}
+    />
+  {/if}
 
   <section class="chart-section">
     <PlotlyChart chartData={state.chartData} view={state.view} useDollars={state.useDollars} />

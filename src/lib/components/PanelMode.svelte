@@ -1,55 +1,52 @@
 <script>
-  import PanelModeToggle from './PanelModeToggle.svelte';
   import PanelistRow from './PanelistRow.svelte';
   import PanelAnalytics from './PanelAnalytics.svelte';
 
   let {
-    active,
+    panelActive,
     panelists,
     activeSection,
     analytics,
-    ontoggle,
     onadd,
     onremove,
     onnamchange,
     onparamchange,
   } = $props();
 
-  const isLossTab = $derived(activeSection === 'loss');
 </script>
 
 <div class="panel-section">
-  <PanelModeToggle {active} {ontoggle} />
-
-  {#if active}
+  {#if panelActive}
     <div class="panel-content">
-      {#if !isLossTab}
-        <div class="panelists">
-          {#each panelists as panelist (panelist.id)}
-            <PanelistRow
-              {panelist}
-              {activeSection}
-              canDelete={panelists.length > 2}
-              onremove={() => onremove(panelist.id)}
-              onnamchange={(name) => onnamchange(panelist.id, name)}
-              onparamchange={(key, val) => onparamchange(panelist.id, key, val)}
-            />
-          {/each}
-        </div>
+      <div class="panelists">
+        {#each panelists as panelist (panelist.id)}
+          <PanelistRow
+            {panelist}
+            {activeSection}
+            canDelete={true}
+            onremove={() => onremove(panelist.id)}
+            onnamchange={(name) => onnamchange(panelist.id, name)}
+            onparamchange={(key, val) => onparamchange(panelist.id, key, val)}
+          />
+        {/each}
+      </div>
 
-        <button class="add-btn" onclick={onadd}>
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-          </svg>
-          Add Expert
-        </button>
+      <button class="add-btn" onclick={onadd}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Add Panelist
+      </button>
 
-        <PanelAnalytics sectionKey={activeSection} {analytics} />
-      {:else}
-        <PanelAnalytics sectionKey="frequency" analytics={analytics?.frequency} />
-        <PanelAnalytics sectionKey="cost" analytics={analytics?.cost} />
-      {/if}
+      <PanelAnalytics sectionKey={activeSection} {analytics} />
     </div>
+  {:else}
+    <button class="add-btn" onclick={onadd}>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      Add Panelist
+    </button>
   {/if}
 </div>
 
