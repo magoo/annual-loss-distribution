@@ -1,12 +1,11 @@
 <script>
-  import { SECTIONS } from '../math/distributions.js';
   import ParameterField from './ParameterField.svelte';
   import { validate } from '../math/validation.js';
 
-  let { panelist, activeSection, canDelete, onremove, onnamchange, onparamchange } = $props();
+  let { panelist, activeSection, distConfig, distType, canDelete, onremove, onnamchange, onparamchange } = $props();
 
-  const fields = $derived(SECTIONS[activeSection].fields);
-  const errors = $derived(validate(activeSection, panelist.params));
+  const fields = $derived(distConfig?.fields ?? []);
+  const errors = $derived(validate(activeSection, panelist.params, distType));
 </script>
 
 <div class="panelist-row">

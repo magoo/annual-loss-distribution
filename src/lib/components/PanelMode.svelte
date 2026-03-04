@@ -6,6 +6,8 @@
     panelActive,
     panelists,
     activeSection,
+    distConfig,
+    distType,
     analytics,
     onadd,
     onremove,
@@ -23,6 +25,8 @@
           <PanelistRow
             {panelist}
             {activeSection}
+            {distConfig}
+            {distType}
             canDelete={true}
             onremove={() => onremove(panelist.id)}
             onnamchange={(name) => onnamchange(panelist.id, name)}
@@ -38,7 +42,7 @@
         Add Panelist
       </button>
 
-      <PanelAnalytics sectionKey={activeSection} {analytics} />
+      <PanelAnalytics sectionKey={activeSection} {distType} {analytics} />
     </div>
   {:else}
     <button class="add-btn" onclick={onadd}>

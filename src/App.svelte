@@ -2,14 +2,18 @@
   import PlotlyChart from './lib/components/PlotlyChart.svelte';
   import ViewToggle from './lib/components/ViewToggle.svelte';
   import DistributionSelector from './lib/components/DistributionSelector.svelte';
+  import DistributionTypeSelector from './lib/components/DistributionTypeSelector.svelte';
   import ParameterInputs from './lib/components/ParameterInputs.svelte';
   import PanelMode from './lib/components/PanelMode.svelte';
   import PanelAnalytics from './lib/components/PanelAnalytics.svelte';
   import ConfidenceInterval from './lib/components/ConfidenceInterval.svelte';
+  import ExecutiveReport from './lib/components/ExecutiveReport.svelte';
   import MonteCarloDescription from './lib/components/MonteCarloDescription.svelte';
   import { getState } from './lib/state/app-state.svelte.js';
 
-  const state = getState();
+  const appState = getState();
+
+  let confidenceLevel = $state(90);
 </script>
 
 <main>
@@ -20,53 +24,79 @@
 
   <section class="input-section">
     <DistributionSelector
-      selected={state.activeSection}
-      onselect={state.setActiveSection}
+      selected={appState.activeSection}
+      onselect={appState.setActiveSection}
     />
 
-    {#if !state.panelActive && state.activeSection !== 'loss'}
+    {#if appState.activeSection !== 'loss'}
+      <DistributionTypeSelector
+        selected={appState.activeDistType}
+        onchange={appState.setDistType}
+      />
+    {/if}
+
+    {#if !appState.panelActive && appState.activeSection !== 'loss'}
       <ParameterInputs
-        activeSection={state.activeSection}
-        params={state.params}
-        validationErrors={state.validationErrors}
-        onparamchange={state.setParam}
+        distConfig={appState.activeDistConfig}
+        params={appState.params}
+        validationErrors={appState.validationErrors}
+        onparamchange={appState.setParam}
       />
     {/if}
 
-    {#if state.activeSection !== 'loss'}
+    {#if appState.activeSection !== 'loss'}
       <PanelMode
-        panelActive={state.panelActive}
-        panelists={state.panelists}
-        activeSection={state.activeSection}
-        analytics={state.panelAnalytics}
-        onadd={state.addPanelist}
-        onremove={state.removePanelist}
-        onnamchange={state.setPanelistName}
-        onparamchange={state.setPanelistParam}
+        panelActive={appState.panelActive}
+        panelists={appState.panelists}
+        activeSection={appState.activeSection}
+        distConfig={appState.activeDistConfig}
+        distType={appState.activeDistType}
+        analytics={appState.panelAnalytics}
+        onadd={appState.addPanelist}
+        onremove={appState.removePanelist}
+        onnamchange={appState.setPanelistName}
+        onparamchange={appState.setPanelistParam}
       />
     {/if}
 
-    {#if state.activeSection === 'loss' && state.panelAnalytics}
-      <PanelAnalytics sectionKey="frequency" analytics={state.panelAnalytics?.frequency} />
-      <PanelAnalytics sectionKey="cost" analytics={state.panelAnalytics?.cost} />
+    {#if appState.activeSection === 'loss' && appState.panelAnalytics}
+      <PanelAnalytics sectionKey="frequency" distType={appState.frequencyDistType} analytics={appState.panelAnalytics?.frequency} />
+      <PanelAnalytics sectionKey="cost" distType={appState.costDistType} analytics={appState.panelAnalytics?.cost} />
     {/if}
   </section>
 
-  {#if state.activeSection === 'loss'}
+  {#if appState.activeSection === 'loss'}
     <MonteCarloDescription
-      frequencyParams={state.effectiveFrequencyParams}
-      costParams={state.effectiveCostParams}
+      frequencyParams={appState.effectiveFrequencyParams}
+      costParams={appState.effectiveCostParams}
+      frequencyDistType={appState.frequencyDistType}
+      costDistType={appState.costDistType}
     />
   {/if}
 
   <section class="chart-section">
-    <PlotlyChart chartData={state.chartData} view={state.view} useDollars={state.useDollars} />
+    <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} />
     <div class="chart-controls">
-      <ViewToggle view={state.view} onchange={state.setView} />
+      <ViewToggle view={appState.view} onchange={appState.setView} />
     </div>
   </section>
 
-  <ConfidenceInterval chartData={state.chartData} useDollars={state.useDollars} activeSection={state.activeSection} />
+  <ConfidenceInterval chartData={appState.chartData} useDollars={appState.useDollars} activeSection={appState.activeSection} bind:confidenceLevel />
+
+  {#if appState.activeSection === 'loss'}
+    <ExecutiveReport
+      chartData={appState.chartData}
+      effectiveFrequencyParams={appState.effectiveFrequencyParams}
+      effectiveCostParams={appState.effectiveCostParams}
+      frequencyPanelists={appState.frequencyPanelists}
+      costPanelists={appState.costPanelists}
+      frequencyPanelActive={appState.frequencyPanelActive}
+      costPanelActive={appState.costPanelActive}
+      frequencyDistType={appState.frequencyDistType}
+      costDistType={appState.costDistType}
+      {confidenceLevel}
+    />
+  {/if}
 </main>
 
 <footer>

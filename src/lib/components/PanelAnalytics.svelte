@@ -1,12 +1,12 @@
 <script>
-  import { SECTIONS } from '../math/distributions.js';
+  import { SECTIONS, getDistConfig } from '../math/distributions.js';
 
-  let { sectionKey, analytics } = $props();
+  let { sectionKey, distType = 'lognormal', analytics } = $props();
 
-  const section = $derived(SECTIONS[sectionKey]);
-  const fields = $derived(section.fields);
-  const sectionLabel = $derived(section.label);
-  const useDollars = $derived(section.useDollars);
+  const config = $derived(getDistConfig(distType, sectionKey));
+  const fields = $derived(config?.fields ?? []);
+  const sectionLabel = $derived(SECTIONS[sectionKey]?.label ?? sectionKey);
+  const useDollars = $derived(SECTIONS[sectionKey]?.useDollars ?? false);
 
   function fmt(v) {
     if (v == null || isNaN(v)) return '—';

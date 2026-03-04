@@ -2,9 +2,7 @@
   import { interpolatePercentile } from '../math/percentile.js';
   import { formatValue, formatCompact } from '../math/formatting.js';
 
-  let { chartData, useDollars, activeSection } = $props();
-
-  let confidenceLevel = $state(90);
+  let { chartData, useDollars, activeSection, confidenceLevel = $bindable(90) } = $props();
   let copied = $state(false);
   let copyTimeout;
 

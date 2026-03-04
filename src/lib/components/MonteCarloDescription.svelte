@@ -1,17 +1,28 @@
 <script>
   import { formatCompact } from '../math/formatting.js';
+  import { DIST_CONFIGS } from '../math/distributions.js';
 
-  let { frequencyParams, costParams } = $props();
+  let { frequencyParams, costParams, frequencyDistType = 'lognormal', costDistType = 'lognormal' } = $props();
+
+  const freqLabel = $derived(DIST_CONFIGS[frequencyDistType]?.label ?? 'Lognormal');
+  const costLabel = $derived(DIST_CONFIGS[costDistType]?.label ?? 'Lognormal');
+
+  function paramSummary(params, distType, useDollars) {
+    if (distType === 'pert') {
+      return `Min: ${formatCompact(params.min, useDollars)}, Mode: ${formatCompact(params.mode, useDollars)}, Max: ${formatCompact(params.max, useDollars)}`;
+    }
+    return `P50: ${formatCompact(params.p50, useDollars)}, P95: ${formatCompact(params.p95, useDollars)}, P99: ${formatCompact(params.p99, useDollars)}`;
+  }
 </script>
 
 <div class="mc-description">
   <p>
-    Running a 10,000-sample Monte Carlo simulation by multiplying the <strong>Frequency</strong> distribution
-    (P50: {formatCompact(frequencyParams.p50, false)} incidents, P95: {formatCompact(frequencyParams.p95, false)} incidents)
-    by the <strong>Cost</strong> distribution
-    (P50: {formatCompact(costParams.p50, true)}, P95: {formatCompact(costParams.p95, true)})
+    Running a 100,000-sample Monte Carlo simulation by multiplying the <strong>Frequency</strong> ({freqLabel}: {paramSummary(frequencyParams, frequencyDistType, false)} incidents)
+    by the <strong>Cost</strong> ({costLabel}: {paramSummary(costParams, costDistType, true)})
     to produce an annual loss distribution.
-    P50 is the median — half of outcomes fall below this value. P95 means only 5% of outcomes exceed it, representing a plausible worst case.
+    {#if frequencyDistType !== 'pert' || costDistType !== 'pert'}
+      P50 is the median — half of outcomes fall below this value. P95 means only 5% of outcomes exceed it. P99 represents a 1-in-100 extreme scenario.
+    {/if}
   </p>
 </div>
 

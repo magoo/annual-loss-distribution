@@ -1,11 +1,10 @@
 <script>
-  import { SECTIONS } from '../math/distributions.js';
   import ParameterField from './ParameterField.svelte';
 
-  let { activeSection, params, validationErrors, onparamchange } = $props();
+  let { distConfig, params, validationErrors, onparamchange } = $props();
 
-  const fields = $derived(SECTIONS[activeSection].fields);
-  const guidance = $derived(SECTIONS[activeSection].guidance);
+  const fields = $derived(distConfig?.fields ?? []);
+  const guidance = $derived(distConfig?.guidance ?? '');
 </script>
 
 <div class="params-card">

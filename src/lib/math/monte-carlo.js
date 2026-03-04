@@ -1,29 +1,83 @@
 import { jStat } from 'jstat';
+import { fitLognormalOLS } from './lognormal.js';
+import { fitParetoOLS } from './pareto.js';
+import { fitPert } from './pert.js';
 
-const Z_95 = 1.6449;
-const NUM_SAMPLES = 10000;
+const DEFAULT_SEED = 12345;
+const NUM_SAMPLES = 100000;
 const NUM_PLOT_POINTS = 500;
 
 /**
- * Derive lognormal mu and sigma from P50 and P95.
+ * Mulberry32 seeded PRNG. Returns values in [0, 1).
  */
-function deriveMuSigma(p50, p95) {
-  const mu = Math.log(p50);
-  const sigma = (Math.log(p95) - mu) / Z_95;
-  return { mu, sigma };
+function createRng(seed = DEFAULT_SEED) {
+  let s = seed | 0;
+  return function () {
+    s |= 0;
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 /**
- * Generate lognormal samples using Box-Muller transform.
- * Uses a seeded-style approach with jStat for normal samples.
+ * Sample from a distribution using inverse transform sampling with seeded RNG.
+ * @param {string} distType - 'lognormal', 'pert', or 'pareto'
+ * @param {object} params - Distribution parameters
+ * @param {number} n - Number of samples
+ * @param {function} rng - Seeded RNG returning [0,1)
+ * @returns {Float64Array}
  */
-function sampleLognormal(mu, sigma, n) {
+function sampleDistribution(distType, params, n, rng) {
   const samples = new Float64Array(n);
-  for (let i = 0; i < n; i++) {
-    const z = jStat.normal.sample(0, 1);
-    samples[i] = Math.exp(mu + sigma * z);
+
+  switch (distType) {
+    case 'lognormal': {
+      const { mu, sigma } = fitLognormalOLS(params.p50, params.p95, params.p99);
+      if (sigma <= 0 || !isFinite(mu) || !isFinite(sigma)) return null;
+      for (let i = 0; i < n; i++) {
+        samples[i] = jStat.lognormal.inv(rng(), mu, sigma);
+      }
+      break;
+    }
+    case 'pert': {
+      const { alpha, beta, min, max } = fitPert(params.min, params.mode, params.max);
+      const range = max - min;
+      if (alpha <= 0 || beta <= 0 || range <= 0) return null;
+      for (let i = 0; i < n; i++) {
+        samples[i] = min + range * jStat.beta.inv(rng(), alpha, beta);
+      }
+      break;
+    }
+    case 'pareto': {
+      const { scale, shape } = fitParetoOLS(params.p50, params.p95, params.p99);
+      if (scale <= 0 || shape <= 0 || !isFinite(scale) || !isFinite(shape)) return null;
+      for (let i = 0; i < n; i++) {
+        samples[i] = jStat.pareto.inv(rng(), scale, shape);
+      }
+      break;
+    }
+    default:
+      return null;
   }
+
   return samples;
+}
+
+/**
+ * Validate params can produce samples for a given distribution type.
+ */
+function validateDistParams(distType, params) {
+  switch (distType) {
+    case 'lognormal':
+    case 'pareto':
+      return params.p50 > 0 && params.p95 > params.p50 && params.p99 > params.p95;
+    case 'pert':
+      return params.min >= 0 && params.mode > params.min && params.max > params.mode;
+    default:
+      return false;
+  }
 }
 
 /**
@@ -45,7 +99,6 @@ function empiricalCdf(sortedSamples, x) {
 
 /**
  * Gaussian KDE in log-space with Silverman bandwidth.
- * Transforms samples to log-space, computes KDE there, then transforms back.
  */
 function gaussianKdePdf(sortedSamples, xValues) {
   const n = sortedSamples.length;
@@ -54,7 +107,6 @@ function gaussianKdePdf(sortedSamples, xValues) {
     logSamples[i] = Math.log(sortedSamples[i]);
   }
 
-  // Silverman bandwidth in log-space
   const mean = logSamples.reduce((a, b) => a + b, 0) / n;
   const variance = logSamples.reduce((sum, v) => sum + (v - mean) ** 2, 0) / n;
   const stddev = Math.sqrt(variance);
@@ -72,8 +124,7 @@ function gaussianKdePdf(sortedSamples, xValues) {
       const u = (logX - logSamples[i]) / h;
       sum += Math.exp(-0.5 * u * u);
     }
-    // KDE in log-space gives density w.r.t. log(x), divide by x for density w.r.t. x
-    const density = coeff * (1 / Math.sqrt(2 * Math.PI)) * sum / x;
+    const density = coeff * (1 / Math.sqrt(2 * Math.PI)) * (sum / x);
     pdf.push(isFinite(density) ? density : 0);
   }
 
@@ -82,37 +133,43 @@ function gaussianKdePdf(sortedSamples, xValues) {
 
 /**
  * Compute Annual Loss distribution via Monte Carlo simulation.
- * Multiplies lognormal frequency samples by lognormal cost samples.
+ * Multiplies frequency samples by cost samples (supports mixed distribution types).
  *
- * @param {{ frequencyParams: {p50, p95}, costParams: {p50, p95} }} allParams
+ * @param {object} allParams
+ * @param {object} allParams.frequencyParams
+ * @param {object} allParams.costParams
+ * @param {string} allParams.frequencyDistType
+ * @param {string} allParams.costDistType
  * @returns {{ x: number[], yPdf: number[], yCdf: number[] } | null}
  */
 export function computeAnnualLoss(allParams) {
-  const { frequencyParams, costParams } = allParams;
+  const {
+    frequencyParams,
+    costParams,
+    frequencyDistType = 'lognormal',
+    costDistType = 'lognormal',
+  } = allParams;
 
   if (!frequencyParams || !costParams) return null;
-  if (frequencyParams.p50 <= 0 || frequencyParams.p95 <= frequencyParams.p50) return null;
-  if (costParams.p50 <= 0 || costParams.p95 <= costParams.p50) return null;
+  if (!validateDistParams(frequencyDistType, frequencyParams)) return null;
+  if (!validateDistParams(costDistType, costParams)) return null;
 
-  const freqMuSigma = deriveMuSigma(frequencyParams.p50, frequencyParams.p95);
-  const costMuSigma = deriveMuSigma(costParams.p50, costParams.p95);
+  const rng = createRng(DEFAULT_SEED);
 
-  if (freqMuSigma.sigma <= 0 || costMuSigma.sigma <= 0) return null;
+  const freqSamples = sampleDistribution(frequencyDistType, frequencyParams, NUM_SAMPLES, rng);
+  const costSamples = sampleDistribution(costDistType, costParams, NUM_SAMPLES, rng);
 
-  // Generate samples
-  const freqSamples = sampleLognormal(freqMuSigma.mu, freqMuSigma.sigma, NUM_SAMPLES);
-  const costSamples = sampleLognormal(costMuSigma.mu, costMuSigma.sigma, NUM_SAMPLES);
+  if (!freqSamples || !costSamples) return null;
 
-  // Pairwise multiplication → annual loss samples
+  // Pairwise multiplication
   const lossSamples = new Float64Array(NUM_SAMPLES);
   for (let i = 0; i < NUM_SAMPLES; i++) {
     lossSamples[i] = freqSamples[i] * costSamples[i];
   }
 
-  // Sort for empirical CDF
   lossSamples.sort();
 
-  // Trim to P0.1 – P99 range
+  // Trim to P0.1 - P99 range
   const lowerIdx = Math.floor(NUM_SAMPLES * 0.001);
   const upperIdx = Math.floor(NUM_SAMPLES * 0.99);
   const lower = lossSamples[lowerIdx];
@@ -120,7 +177,7 @@ export function computeAnnualLoss(allParams) {
 
   if (lower <= 0 || upper <= lower || !isFinite(lower) || !isFinite(upper)) return null;
 
-  // Generate x values (log-spaced for better coverage of heavy tail)
+  // Log-spaced x values
   const logLower = Math.log(lower);
   const logUpper = Math.log(upper);
   const logStep = (logUpper - logLower) / (NUM_PLOT_POINTS - 1);
@@ -129,10 +186,7 @@ export function computeAnnualLoss(allParams) {
     x.push(Math.exp(logLower + i * logStep));
   }
 
-  // Compute PDF via Gaussian KDE in log-space
   const yPdf = gaussianKdePdf(lossSamples, x);
-
-  // Compute empirical CDF via binary search
   const yCdf = x.map((xVal) => empiricalCdf(lossSamples, xVal));
 
   return { x, yPdf, yCdf };

@@ -1,12 +1,14 @@
-import { SECTIONS, SECTION_TYPES } from '../math/distributions.js';
+import { SECTIONS, SECTION_TYPES, DIST_CONFIGS, DIST_TYPES, getDistConfig } from '../math/distributions.js';
 import { computeDistribution } from '../math/distributions.js';
 import { validate } from '../math/validation.js';
 
 // --- Core state ---
 let activeSection = $state('frequency');
 let view = $state('pdf');
-let frequencyParams = $state({ ...SECTIONS.frequency.defaults });
-let costParams = $state({ ...SECTIONS.cost.defaults });
+let frequencyDistType = $state('lognormal');
+let costDistType = $state('lognormal');
+let frequencyParams = $state({ ...DIST_CONFIGS.lognormal.frequency.defaults });
+let costParams = $state({ ...DIST_CONFIGS.lognormal.cost.defaults });
 
 // --- Panel mode state ---
 let frequencyPanelists = $state([]);
@@ -19,6 +21,18 @@ const costPanelActive = $derived(costPanelists.length >= 2);
 const activePanelActive = $derived(
   activeSection === 'frequency' ? frequencyPanelActive : costPanelActive
 );
+
+// --- Derived: active dist type and config ---
+const activeDistType = $derived(
+  activeSection === 'frequency' ? frequencyDistType :
+  activeSection === 'cost' ? costDistType :
+  'lognormal'
+);
+
+const activeDistConfig = $derived.by(() => {
+  if (activeSection === 'loss') return null;
+  return getDistConfig(activeDistType, activeSection);
+});
 
 // --- Helpers ---
 const activePanelists = $derived.by(() => {
@@ -34,7 +48,10 @@ function getActivePanelists() {
 }
 
 function averageParams(panelistList, sectionKey) {
-  const fields = SECTIONS[sectionKey].fields;
+  const distType = sectionKey === 'frequency' ? frequencyDistType : costDistType;
+  const config = getDistConfig(distType, sectionKey);
+  if (!config) return {};
+  const fields = config.fields;
   const averaged = {};
   for (const field of fields) {
     const values = panelistList
@@ -50,7 +67,10 @@ function averageParams(panelistList, sectionKey) {
 }
 
 function computeAnalytics(panelistList, sectionKey) {
-  const fields = SECTIONS[sectionKey].fields;
+  const distType = sectionKey === 'frequency' ? frequencyDistType : costDistType;
+  const config = getDistConfig(distType, sectionKey);
+  if (!config) return {};
+  const fields = config.fields;
   const analytics = {};
   for (const field of fields) {
     const values = panelistList
@@ -87,8 +107,8 @@ const effectiveParams = $derived.by(() => {
   return {};
 });
 
-const frequencyValidationErrors = $derived(validate('frequency', effectiveFrequencyParams));
-const costValidationErrors = $derived(validate('cost', effectiveCostParams));
+const frequencyValidationErrors = $derived(validate('frequency', effectiveFrequencyParams, frequencyDistType));
+const costValidationErrors = $derived(validate('cost', effectiveCostParams, costDistType));
 
 const validationErrors = $derived.by(() => {
   if (activeSection === 'frequency') return frequencyValidationErrors;
@@ -110,9 +130,11 @@ const chartData = $derived.by(() => {
     return computeDistribution('loss', null, {
       frequencyParams: effectiveFrequencyParams,
       costParams: effectiveCostParams,
+      frequencyDistType,
+      costDistType,
     });
   }
-  return computeDistribution(activeSection, effectiveParams);
+  return computeDistribution(activeSection, effectiveParams, null, activeDistType);
 });
 
 const panelAnalytics = $derived.by(() => {
@@ -148,32 +170,69 @@ function setParam(key, value) {
   }
 }
 
+function setDistType(distType) {
+  if (!DIST_TYPES.includes(distType)) return;
+  if (activeSection === 'loss') return;
+
+  const sectionKey = activeSection;
+  const currentDistType = sectionKey === 'frequency' ? frequencyDistType : costDistType;
+  if (distType === currentDistType) return;
+
+  const newConfig = getDistConfig(distType, sectionKey);
+  if (!newConfig) return;
+
+  // Check if param keys are compatible (lognormal<->pareto share keys, PERT is different)
+  const currentConfig = getDistConfig(currentDistType, sectionKey);
+  const currentKeys = new Set(currentConfig.fields.map((f) => f.key));
+  const newKeys = new Set(newConfig.fields.map((f) => f.key));
+  const keysMatch = currentKeys.size === newKeys.size && [...currentKeys].every((k) => newKeys.has(k));
+
+  if (sectionKey === 'frequency') {
+    frequencyDistType = distType;
+    if (!keysMatch) {
+      frequencyParams = { ...newConfig.defaults };
+    }
+    // Clear panelists when switching dist type (incompatible param structures)
+    frequencyPanelists = [];
+  } else {
+    costDistType = distType;
+    if (!keysMatch) {
+      costParams = { ...newConfig.defaults };
+    }
+    costPanelists = [];
+  }
+}
+
 function addPanelist() {
+  const distType = activeSection === 'frequency' ? frequencyDistType : costDistType;
+  const config = getDistConfig(distType, activeSection);
+  if (!config) return;
+
   if (activeSection === 'frequency') {
     if (frequencyPanelists.length === 0) {
       frequencyPanelists = [
-        { id: nextPanelistId++, name: 'Expert 1', params: { ...frequencyParams } },
-        { id: nextPanelistId++, name: 'Expert 2', params: { ...SECTIONS.frequency.defaults } },
+        { id: nextPanelistId++, name: 'Panelist 1', params: { ...frequencyParams } },
+        { id: nextPanelistId++, name: 'Panelist 2', params: { ...config.defaults } },
       ];
       return;
     }
     frequencyPanelists = [...frequencyPanelists, {
       id: nextPanelistId++,
-      name: `Expert ${frequencyPanelists.length + 1}`,
-      params: { ...SECTIONS.frequency.defaults },
+      name: `Panelist ${frequencyPanelists.length + 1}`,
+      params: { ...config.defaults },
     }];
   } else if (activeSection === 'cost') {
     if (costPanelists.length === 0) {
       costPanelists = [
-        { id: nextPanelistId++, name: 'Expert 1', params: { ...costParams } },
-        { id: nextPanelistId++, name: 'Expert 2', params: { ...SECTIONS.cost.defaults } },
+        { id: nextPanelistId++, name: 'Panelist 1', params: { ...costParams } },
+        { id: nextPanelistId++, name: 'Panelist 2', params: { ...config.defaults } },
       ];
       return;
     }
     costPanelists = [...costPanelists, {
       id: nextPanelistId++,
-      name: `Expert ${costPanelists.length + 1}`,
-      params: { ...SECTIONS.cost.defaults },
+      name: `Panelist ${costPanelists.length + 1}`,
+      params: { ...config.defaults },
     }];
   }
 }
@@ -230,9 +289,18 @@ export function getState() {
     get chartData() { return chartData; },
     get panelAnalytics() { return panelAnalytics; },
     get useDollars() { return useDollars; },
+    get frequencyPanelists() { return frequencyPanelists; },
+    get costPanelists() { return costPanelists; },
+    get frequencyPanelActive() { return frequencyPanelActive; },
+    get costPanelActive() { return costPanelActive; },
+    get frequencyDistType() { return frequencyDistType; },
+    get costDistType() { return costDistType; },
+    get activeDistType() { return activeDistType; },
+    get activeDistConfig() { return activeDistConfig; },
     setActiveSection,
     setView,
     setParam,
+    setDistType,
     addPanelist,
     removePanelist,
     setPanelistName,
