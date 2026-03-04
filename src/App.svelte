@@ -54,7 +54,34 @@
   <ConfidenceInterval chartData={state.chartData} useDollars={state.useDollars} activeSection={state.activeSection} />
 </main>
 
+<footer>
+  <a href="https://github.com/magoo/annual-loss-distribution" target="_blank" rel="noopener noreferrer">GitHub</a>
+  <span class="separator">&middot;</span>
+  <span>Built by Ryan McGeehan</span>
+</footer>
+
 <style>
+  footer {
+    text-align: center;
+    margin-top: var(--spacing-8);
+    padding-bottom: var(--spacing-12);
+    font-size: var(--font-size-sm);
+    color: var(--color-text-tertiary);
+  }
+
+  footer a {
+    color: var(--color-text-tertiary);
+    text-decoration: none;
+  }
+
+  footer a:hover {
+    color: var(--color-text-secondary);
+    text-decoration: underline;
+  }
+
+  .separator {
+    margin: 0 var(--spacing-2);
+  }
   main {
     display: flex;
     flex-direction: column;
