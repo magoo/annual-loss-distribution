@@ -16,7 +16,7 @@
       class="name-input"
       value={panelist.name}
       oninput={(e) => onnamchange(e.target.value)}
-      placeholder="Expert name"
+      placeholder="Panelist name"
     />
     <button
       class="remove-btn"
@@ -60,17 +60,7 @@
 
   .name-input {
     flex: 1;
-    border: none;
-    padding: var(--spacing-1) 0;
     font-weight: 600;
-    font-size: var(--font-size-base);
-    color: var(--color-text);
-    background: transparent;
-    outline: none;
-  }
-
-  .name-input:focus {
-    box-shadow: none;
   }
 
   .remove-btn {
