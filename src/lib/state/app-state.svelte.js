@@ -1,5 +1,6 @@
-import { SECTIONS, SECTION_TYPES, DIST_CONFIGS, DIST_TYPES, getDistConfig } from '../math/distributions.js';
+import { SECTIONS, SECTION_TYPES, DIST_CONFIGS, DIST_TYPES, getDistConfig, DEFAULT_SCENARIOS, SCENARIO_FREQ_CONFIGS, SCENARIO_COST_CONFIGS } from '../math/distributions.js';
 import { computeDistribution } from '../math/distributions.js';
+import { computeScenarioMC } from '../math/scenario-monte-carlo.js';
 import { validate } from '../math/validation.js';
 
 // --- Core state ---
@@ -15,11 +16,24 @@ let frequencyPanelists = $state([]);
 let costPanelists = $state([]);
 let nextPanelistId = $state(1);
 
+// --- Scenario mode state (per-section) ---
+let frequencyScenarioMode = $state(false);
+let costScenarioMode = $state(false);
+let scenarios = $state([]);
+let nextScenarioId = $state(1);
+
 // Per-section panel active (derived from panelist count)
 const frequencyPanelActive = $derived(frequencyPanelists.length >= 2);
 const costPanelActive = $derived(costPanelists.length >= 2);
 const activePanelActive = $derived(
   activeSection === 'frequency' ? frequencyPanelActive : costPanelActive
+);
+
+// Per-tab derived scenario mode
+const activeScenarioMode = $derived(
+  activeSection === 'frequency' ? frequencyScenarioMode
+  : activeSection === 'cost' ? costScenarioMode
+  : (frequencyScenarioMode || costScenarioMode)
 );
 
 // --- Derived: active dist type and config ---
@@ -125,6 +139,33 @@ const isValid = $derived.by(() => {
 });
 
 const chartData = $derived.by(() => {
+  const freqScen = frequencyScenarioMode && scenarios.length > 0;
+  const costScen = costScenarioMode && scenarios.length > 0;
+
+  if (activeSection === 'frequency' && freqScen) {
+    return computeScenarioMC(scenarios, 'frequency', {
+      frequencyScenarioMode: true,
+      costScenarioMode: costScen,
+    });
+  }
+  if (activeSection === 'cost' && costScen) {
+    // Cost tab needs frequency to generate incident counts for cost sampling
+    return computeScenarioMC(scenarios, 'cost', {
+      frequencyScenarioMode: true,
+      costScenarioMode: true,
+    });
+  }
+  if (activeSection === 'loss' && (freqScen || costScen)) {
+    return computeScenarioMC(scenarios, 'loss', {
+      frequencyScenarioMode: freqScen,
+      costScenarioMode: costScen,
+      frequencyParams: effectiveFrequencyParams,
+      costParams: effectiveCostParams,
+      frequencyDistType,
+      costDistType,
+    });
+  }
+
   if (!isValid) return null;
   if (activeSection === 'loss') {
     return computeDistribution('loss', null, {
@@ -203,7 +244,106 @@ function setDistType(distType) {
   }
 }
 
+// --- Scenario actions ---
+function toggleScenarioMode() {
+  if (activeSection === 'frequency') {
+    frequencyScenarioMode = !frequencyScenarioMode;
+    if (frequencyScenarioMode) {
+      frequencyPanelists = [];
+      if (scenarios.length === 0) {
+        scenarios = DEFAULT_SCENARIOS.map((s) => ({
+          id: nextScenarioId++,
+          name: s.name,
+          frequencyMethod: s.frequencyMethod,
+          frequencyParams: { ...s.frequencyParams },
+          costDistType: s.costDistType,
+          costParams: { ...s.costParams },
+        }));
+      }
+    } else if (!costScenarioMode) {
+      scenarios = [];
+    }
+  } else if (activeSection === 'cost') {
+    costScenarioMode = !costScenarioMode;
+    if (costScenarioMode) {
+      costPanelists = [];
+      if (scenarios.length === 0) {
+        scenarios = DEFAULT_SCENARIOS.map((s) => ({
+          id: nextScenarioId++,
+          name: s.name,
+          frequencyMethod: s.frequencyMethod,
+          frequencyParams: { ...s.frequencyParams },
+          costDistType: s.costDistType,
+          costParams: { ...s.costParams },
+        }));
+      }
+    } else if (!frequencyScenarioMode) {
+      scenarios = [];
+    }
+  }
+}
+
+function addScenario() {
+  scenarios = [...scenarios, {
+    id: nextScenarioId++,
+    name: `Scenario ${scenarios.length + 1}`,
+    frequencyMethod: 'odds',
+    frequencyParams: { ...SCENARIO_FREQ_CONFIGS.odds.defaults },
+    costDistType: 'lognormal',
+    costParams: { ...SCENARIO_COST_CONFIGS.lognormal.defaults },
+  }];
+}
+
+function removeScenario(id) {
+  scenarios = scenarios.filter((s) => s.id !== id);
+  if (scenarios.length === 0) {
+    frequencyScenarioMode = false;
+    costScenarioMode = false;
+  }
+}
+
+function setScenarioName(id, name) {
+  scenarios = scenarios.map((s) => (s.id === id ? { ...s, name } : s));
+}
+
+function setScenarioFrequencyMethod(id, method) {
+  const config = SCENARIO_FREQ_CONFIGS[method];
+  if (!config) return;
+  scenarios = scenarios.map((s) =>
+    s.id === id ? { ...s, frequencyMethod: method, frequencyParams: { ...config.defaults } } : s
+  );
+}
+
+function setScenarioFrequencyParam(id, key, value) {
+  scenarios = scenarios.map((s) =>
+    s.id === id ? { ...s, frequencyParams: { ...s.frequencyParams, [key]: value } } : s
+  );
+}
+
+function setScenarioCostDistType(id, distType) {
+  const config = SCENARIO_COST_CONFIGS[distType];
+  if (!config) return;
+  scenarios = scenarios.map((s) =>
+    s.id === id ? { ...s, costDistType: distType, costParams: { ...config.defaults } } : s
+  );
+}
+
+function setScenarioCostParam(id, key, value) {
+  scenarios = scenarios.map((s) =>
+    s.id === id ? { ...s, costParams: { ...s.costParams, [key]: value } } : s
+  );
+}
+
 function addPanelist() {
+  // Mutual exclusivity: adding panelist disables scenario mode for current section
+  if (activeSection === 'frequency' && frequencyScenarioMode) {
+    frequencyScenarioMode = false;
+    if (!costScenarioMode) scenarios = [];
+  } else if (activeSection === 'cost' && costScenarioMode) {
+    costScenarioMode = false;
+    if (!frequencyScenarioMode) scenarios = [];
+  }
+
   const distType = activeSection === 'frequency' ? frequencyDistType : costDistType;
   const config = getDistConfig(distType, activeSection);
   if (!config) return;
@@ -297,6 +437,10 @@ export function getState() {
     get costDistType() { return costDistType; },
     get activeDistType() { return activeDistType; },
     get activeDistConfig() { return activeDistConfig; },
+    get scenarioMode() { return activeScenarioMode; },
+    get frequencyScenarioMode() { return frequencyScenarioMode; },
+    get costScenarioMode() { return costScenarioMode; },
+    get scenarios() { return scenarios; },
     setActiveSection,
     setView,
     setParam,
@@ -305,5 +449,13 @@ export function getState() {
     removePanelist,
     setPanelistName,
     setPanelistParam,
+    toggleScenarioMode,
+    addScenario,
+    removeScenario,
+    setScenarioName,
+    setScenarioFrequencyMethod,
+    setScenarioFrequencyParam,
+    setScenarioCostDistType,
+    setScenarioCostParam,
   };
 }

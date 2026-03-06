@@ -87,6 +87,65 @@ export const DIST_CONFIGS = {
 };
 
 /**
+ * Scenario frequency methods (includes 'odds' in addition to standard dist types).
+ */
+export const SCENARIO_FREQ_METHODS = ['odds', 'lognormal', 'pert', 'pareto'];
+
+export const SCENARIO_FREQ_CONFIGS = {
+  odds: {
+    label: 'Odds',
+    defaults: { odds: 10 },
+    fields: [{ key: 'odds', label: '1 in N years', help: 'Chance per year (e.g. 10 = once every 10 years)' }],
+  },
+  lognormal: {
+    label: 'Lognormal',
+    defaults: { ...DIST_CONFIGS.lognormal.frequency.defaults },
+    fields: DIST_CONFIGS.lognormal.frequency.fields,
+  },
+  pert: {
+    label: 'PERT',
+    defaults: { ...DIST_CONFIGS.pert.frequency.defaults },
+    fields: DIST_CONFIGS.pert.frequency.fields,
+  },
+  pareto: {
+    label: 'Pareto',
+    defaults: { ...DIST_CONFIGS.pareto.frequency.defaults },
+    fields: DIST_CONFIGS.pareto.frequency.fields,
+  },
+};
+
+export const SCENARIO_COST_CONFIGS = {
+  lognormal: {
+    label: 'Lognormal',
+    defaults: { ...DIST_CONFIGS.lognormal.cost.defaults },
+    fields: DIST_CONFIGS.lognormal.cost.fields,
+  },
+  pert: {
+    label: 'PERT',
+    defaults: { ...DIST_CONFIGS.pert.cost.defaults },
+    fields: DIST_CONFIGS.pert.cost.fields,
+  },
+  pareto: {
+    label: 'Pareto',
+    defaults: { ...DIST_CONFIGS.pareto.cost.defaults },
+    fields: DIST_CONFIGS.pareto.cost.fields,
+  },
+};
+
+export const DEFAULT_SCENARIOS = [
+  { name: 'Product Exploit', frequencyMethod: 'odds', frequencyParams: { odds: 3 }, costDistType: 'lognormal', costParams: { p50: 100000, p95: 1000000, p99: 5000000 } },
+  { name: 'Malicious Insider', frequencyMethod: 'odds', frequencyParams: { odds: 10 }, costDistType: 'lognormal', costParams: { p50: 200000, p95: 2000000, p99: 10000000 } },
+  { name: 'DDoS', frequencyMethod: 'odds', frequencyParams: { odds: 2 }, costDistType: 'lognormal', costParams: { p50: 20000, p95: 200000, p99: 1000000 } },
+  { name: 'Supply Chain', frequencyMethod: 'odds', frequencyParams: { odds: 20 }, costDistType: 'lognormal', costParams: { p50: 200000, p95: 2000000, p99: 10000000 } },
+  { name: 'Credential Leak / Theft', frequencyMethod: 'odds', frequencyParams: { odds: 2 }, costDistType: 'lognormal', costParams: { p50: 30000, p95: 300000, p99: 1500000 } },
+  { name: 'Compromised Software Download', frequencyMethod: 'odds', frequencyParams: { odds: 15 }, costDistType: 'lognormal', costParams: { p50: 50000, p95: 500000, p99: 3000000 } },
+  { name: 'Social Engineering', frequencyMethod: 'odds', frequencyParams: { odds: 3 }, costDistType: 'lognormal', costParams: { p50: 25000, p95: 250000, p99: 1000000 } },
+  { name: 'Zero Day Targeting Employee', frequencyMethod: 'odds', frequencyParams: { odds: 50 }, costDistType: 'lognormal', costParams: { p50: 100000, p95: 1000000, p99: 5000000 } },
+  { name: 'Exposed and Exploited Service', frequencyMethod: 'odds', frequencyParams: { odds: 5 }, costDistType: 'lognormal', costParams: { p50: 50000, p95: 500000, p99: 2000000 } },
+  { name: 'Ransomware', frequencyMethod: 'odds', frequencyParams: { odds: 5 }, costDistType: 'lognormal', costParams: { p50: 100000, p95: 1000000, p99: 10000000 } },
+];
+
+/**
  * Get the distribution config for a given dist type and section.
  */
 export function getDistConfig(distType, section) {

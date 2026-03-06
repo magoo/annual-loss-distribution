@@ -76,8 +76,25 @@ export function validatePert(params) {
   return errors;
 }
 
+export function validateOdds(params) {
+  const { odds } = params;
+  const errors = {};
+
+  if (odds == null || isNaN(odds)) {
+    errors.odds = 'Required';
+  } else if (odds <= 0) {
+    errors.odds = 'Must be greater than 0';
+  }
+
+  return errors;
+}
+
 export function validate(section, params, distType) {
   if (section === 'loss') return {};
+
+  if (distType === 'odds') {
+    return validateOdds(params);
+  }
 
   switch (distType) {
     case 'pert':

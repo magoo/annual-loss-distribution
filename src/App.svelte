@@ -9,6 +9,8 @@
   import ConfidenceInterval from './lib/components/ConfidenceInterval.svelte';
   import ExecutiveReport from './lib/components/ExecutiveReport.svelte';
   import MonteCarloDescription from './lib/components/MonteCarloDescription.svelte';
+  import ScenarioToggle from './lib/components/ScenarioToggle.svelte';
+  import ScenarioMode from './lib/components/ScenarioMode.svelte';
   import { getState } from './lib/state/app-state.svelte.js';
 
   const appState = getState();
@@ -28,40 +30,58 @@
       onselect={appState.setActiveSection}
     />
 
-    {#if appState.activeSection !== 'loss'}
-      <DistributionTypeSelector
-        selected={appState.activeDistType}
-        onchange={appState.setDistType}
-      />
-    {/if}
+    <ScenarioToggle active={appState.scenarioMode} ontoggle={appState.toggleScenarioMode} />
 
-    {#if !appState.panelActive && appState.activeSection !== 'loss'}
-      <ParameterInputs
-        distConfig={appState.activeDistConfig}
-        params={appState.params}
-        validationErrors={appState.validationErrors}
-        onparamchange={appState.setParam}
-      />
-    {/if}
+    {#if appState.scenarioMode}
+      {#if appState.activeSection !== 'loss'}
+        <ScenarioMode
+          scenarios={appState.scenarios}
+          activeSection={appState.activeSection}
+          onadd={appState.addScenario}
+          onremove={appState.removeScenario}
+          onnamchange={appState.setScenarioName}
+          onfreqmethod={appState.setScenarioFrequencyMethod}
+          onfreqparam={appState.setScenarioFrequencyParam}
+          oncostdisttype={appState.setScenarioCostDistType}
+          oncostparam={appState.setScenarioCostParam}
+        />
+      {/if}
+    {:else}
+      {#if appState.activeSection !== 'loss'}
+        <DistributionTypeSelector
+          selected={appState.activeDistType}
+          onchange={appState.setDistType}
+        />
+      {/if}
 
-    {#if appState.activeSection !== 'loss'}
-      <PanelMode
-        panelActive={appState.panelActive}
-        panelists={appState.panelists}
-        activeSection={appState.activeSection}
-        distConfig={appState.activeDistConfig}
-        distType={appState.activeDistType}
-        analytics={appState.panelAnalytics}
-        onadd={appState.addPanelist}
-        onremove={appState.removePanelist}
-        onnamchange={appState.setPanelistName}
-        onparamchange={appState.setPanelistParam}
-      />
-    {/if}
+      {#if !appState.panelActive && appState.activeSection !== 'loss'}
+        <ParameterInputs
+          distConfig={appState.activeDistConfig}
+          params={appState.params}
+          validationErrors={appState.validationErrors}
+          onparamchange={appState.setParam}
+        />
+      {/if}
 
-    {#if appState.activeSection === 'loss' && appState.panelAnalytics}
-      <PanelAnalytics sectionKey="frequency" distType={appState.frequencyDistType} analytics={appState.panelAnalytics?.frequency} />
-      <PanelAnalytics sectionKey="cost" distType={appState.costDistType} analytics={appState.panelAnalytics?.cost} />
+      {#if appState.activeSection !== 'loss'}
+        <PanelMode
+          panelActive={appState.panelActive}
+          panelists={appState.panelists}
+          activeSection={appState.activeSection}
+          distConfig={appState.activeDistConfig}
+          distType={appState.activeDistType}
+          analytics={appState.panelAnalytics}
+          onadd={appState.addPanelist}
+          onremove={appState.removePanelist}
+          onnamchange={appState.setPanelistName}
+          onparamchange={appState.setPanelistParam}
+        />
+      {/if}
+
+      {#if appState.activeSection === 'loss' && appState.panelAnalytics}
+        <PanelAnalytics sectionKey="frequency" distType={appState.frequencyDistType} analytics={appState.panelAnalytics?.frequency} />
+        <PanelAnalytics sectionKey="cost" distType={appState.costDistType} analytics={appState.panelAnalytics?.cost} />
+      {/if}
     {/if}
   </section>
 
@@ -71,11 +91,14 @@
       costParams={appState.effectiveCostParams}
       frequencyDistType={appState.frequencyDistType}
       costDistType={appState.costDistType}
+      frequencyScenarioMode={appState.frequencyScenarioMode}
+      costScenarioMode={appState.costScenarioMode}
+      scenarios={appState.scenarios}
     />
   {/if}
 
   <section class="chart-section">
-    <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} />
+    <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} />
     <div class="chart-controls">
       <ViewToggle view={appState.view} onchange={appState.setView} />
     </div>
@@ -94,6 +117,9 @@
       costPanelActive={appState.costPanelActive}
       frequencyDistType={appState.frequencyDistType}
       costDistType={appState.costDistType}
+      frequencyScenarioMode={appState.frequencyScenarioMode}
+      costScenarioMode={appState.costScenarioMode}
+      scenarios={appState.scenarios}
       {confidenceLevel}
     />
   {/if}

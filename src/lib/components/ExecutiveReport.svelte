@@ -13,6 +13,9 @@
     costPanelActive,
     frequencyDistType = 'lognormal',
     costDistType = 'lognormal',
+    frequencyScenarioMode = false,
+    costScenarioMode = false,
+    scenarios = [],
     confidenceLevel,
   } = $props();
 
@@ -70,9 +73,30 @@
     `There is ${confidenceLevel}% confidence that annual losses fall between ${formatCompact(lowerBound, true)} and ${formatCompact(upperBound, true)}.`
   );
 
-  const reportText = $derived(
-    [frequencySentence, costSentence, lossSentence, ciSentence].filter(Boolean).join(' ')
-  );
+  const scenarioSentence = $derived.by(() => {
+    if ((!frequencyScenarioMode && !costScenarioMode) || scenarios.length === 0) return '';
+    const names = scenarios.map((s) => s.name).join(', ');
+    if (frequencyScenarioMode && costScenarioMode) {
+      return `The analysis models ${scenarios.length} threat scenarios (${names}) using a scenario-based Monte Carlo simulation of 10,000 rounds.`;
+    }
+    if (frequencyScenarioMode) {
+      return `Incident frequency is modeled from ${scenarios.length} threat scenarios (${names}), while cost uses a single distribution.`;
+    }
+    return `Incident cost is modeled from ${scenarios.length} threat scenarios (${names}), while frequency uses a single distribution.`;
+  });
+
+  const reportText = $derived.by(() => {
+    if (frequencyScenarioMode && costScenarioMode) {
+      return [scenarioSentence, lossSentence, ciSentence].filter(Boolean).join(' ');
+    }
+    if (frequencyScenarioMode) {
+      return [scenarioSentence, costSentence, lossSentence, ciSentence].filter(Boolean).join(' ');
+    }
+    if (costScenarioMode) {
+      return [frequencySentence, scenarioSentence, lossSentence, ciSentence].filter(Boolean).join(' ');
+    }
+    return [frequencySentence, costSentence, lossSentence, ciSentence].filter(Boolean).join(' ');
+  });
 
   function copyToClipboard() {
     navigator.clipboard.writeText(reportText);
