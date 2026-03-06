@@ -1,11 +1,13 @@
 <script>
   import ParameterField from './ParameterField.svelte';
+  import ScenarioMiniChart from './ScenarioMiniChart.svelte';
   import { validate } from '../math/validation.js';
   import { SCENARIO_FREQ_METHODS, SCENARIO_FREQ_CONFIGS, SCENARIO_COST_CONFIGS, DIST_TYPES } from '../math/distributions.js';
 
   let {
     scenario,
     activeSection,
+    showMiniChart = false,
     onremove,
     onnamchange,
     onfreqmethod,
@@ -15,6 +17,8 @@
   } = $props();
 
   const isFrequency = $derived(activeSection === 'frequency');
+  const miniChartDistType = $derived(isFrequency ? scenario.frequencyMethod : scenario.costDistType);
+  const miniChartParams = $derived(isFrequency ? scenario.frequencyParams : scenario.costParams);
 
   // Frequency tab: method config and fields
   const freqConfig = $derived(SCENARIO_FREQ_CONFIGS[scenario.frequencyMethod]);
@@ -74,6 +78,16 @@
       </svg>
     </button>
   </div>
+
+  {#if showMiniChart}
+    <div class="mini-chart-row">
+      <ScenarioMiniChart
+        section={isFrequency ? 'frequency' : 'cost'}
+        distType={miniChartDistType}
+        params={miniChartParams}
+      />
+    </div>
+  {/if}
 
   <div class="fields-row">
     {#if isFrequency}
@@ -167,6 +181,10 @@
   .remove-btn:hover {
     background: var(--color-error-light);
     color: var(--color-error);
+  }
+
+  .mini-chart-row {
+    margin-bottom: var(--spacing-2);
   }
 
   .fields-row {
