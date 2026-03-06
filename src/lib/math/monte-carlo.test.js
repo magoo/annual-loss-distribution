@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { computeAnnualLoss } from './monte-carlo.js';
 
 const validParams = {
-  frequencyParams: { p50: 5, p95: 20 },
-  costParams: { p50: 50000, p95: 500000 },
+  frequencyParams: { p50: 5, p95: 20, p99: 80 },
+  costParams: { p50: 50000, p95: 500000, p99: 2000000 },
+  frequencyDistType: 'lognormal',
+  costDistType: 'lognormal',
 };
 
 describe('computeAnnualLoss', () => {
@@ -36,10 +38,6 @@ describe('computeAnnualLoss', () => {
 
   describe('P50/P95 fidelity (statistical)', () => {
     it('empirical CDF at theoretical median ≈ 0.50', () => {
-      // Product of two lognormals is lognormal:
-      //   mu_product = mu_freq + mu_cost
-      //   sigma_product = sqrt(sigma_freq^2 + sigma_cost^2)
-      // Theoretical median = exp(mu_product)
       const Z_95 = 1.6449;
       const muFreq = Math.log(validParams.frequencyParams.p50);
       const sigmaFreq = (Math.log(validParams.frequencyParams.p95) - muFreq) / Z_95;
@@ -53,9 +51,70 @@ describe('computeAnnualLoss', () => {
       expect(result).not.toBeNull();
 
       const cdfAtMedian = interpolateCdf(result.x, result.yCdf, theoreticalMedian);
-      // Relaxed tolerance ±0.05 for Monte Carlo noise
       expect(cdfAtMedian).toBeGreaterThan(0.35);
       expect(cdfAtMedian).toBeLessThan(0.65);
+    });
+  });
+
+  describe('determinism (seeded RNG)', () => {
+    it('produces identical output for the same params', () => {
+      const result1 = computeAnnualLoss(validParams);
+      const result2 = computeAnnualLoss(validParams);
+
+      expect(result1).not.toBeNull();
+      expect(result2).not.toBeNull();
+
+      expect(result1.x).toEqual(result2.x);
+      expect(result1.yPdf).toEqual(result2.yPdf);
+      expect(result1.yCdf).toEqual(result2.yCdf);
+    });
+  });
+
+  describe('mixed distribution types', () => {
+    it('lognormal frequency × pert cost', () => {
+      const result = computeAnnualLoss({
+        frequencyParams: { p50: 5, p95: 20, p99: 80 },
+        costParams: { min: 1000, mode: 50000, max: 500000 },
+        frequencyDistType: 'lognormal',
+        costDistType: 'pert',
+      });
+      expect(result).not.toBeNull();
+      expect(result.x.length).toBeGreaterThan(0);
+      expect(result.yPdf.length).toBe(result.x.length);
+      expect(result.yCdf.length).toBe(result.x.length);
+    });
+
+    it('pert frequency × lognormal cost', () => {
+      const result = computeAnnualLoss({
+        frequencyParams: { min: 0, mode: 5, max: 20 },
+        costParams: { p50: 50000, p95: 500000, p99: 2000000 },
+        frequencyDistType: 'pert',
+        costDistType: 'lognormal',
+      });
+      expect(result).not.toBeNull();
+      expect(result.x.length).toBeGreaterThan(0);
+    });
+
+    it('pareto frequency × lognormal cost', () => {
+      const result = computeAnnualLoss({
+        frequencyParams: { p50: 5, p95: 20, p99: 80 },
+        costParams: { p50: 50000, p95: 500000, p99: 2000000 },
+        frequencyDistType: 'pareto',
+        costDistType: 'lognormal',
+      });
+      expect(result).not.toBeNull();
+      expect(result.x.length).toBeGreaterThan(0);
+    });
+
+    it('pert frequency × pert cost', () => {
+      const result = computeAnnualLoss({
+        frequencyParams: { min: 0, mode: 5, max: 20 },
+        costParams: { min: 1000, mode: 50000, max: 500000 },
+        frequencyDistType: 'pert',
+        costDistType: 'pert',
+      });
+      expect(result).not.toBeNull();
+      expect(result.x.length).toBeGreaterThan(0);
     });
   });
 
@@ -70,14 +129,21 @@ describe('computeAnnualLoss', () => {
 
     it('returns null when frequency p50 <= 0', () => {
       expect(computeAnnualLoss({
-        frequencyParams: { p50: 0, p95: 10 },
+        frequencyParams: { p50: 0, p95: 10, p99: 50 },
         costParams: validParams.costParams,
       })).toBeNull();
     });
 
     it('returns null when frequency p95 <= p50', () => {
       expect(computeAnnualLoss({
-        frequencyParams: { p50: 10, p95: 10 },
+        frequencyParams: { p50: 10, p95: 10, p99: 50 },
+        costParams: validParams.costParams,
+      })).toBeNull();
+    });
+
+    it('returns null when frequency p99 <= p95', () => {
+      expect(computeAnnualLoss({
+        frequencyParams: { p50: 5, p95: 20, p99: 20 },
         costParams: validParams.costParams,
       })).toBeNull();
     });
@@ -85,14 +151,14 @@ describe('computeAnnualLoss', () => {
     it('returns null when cost p50 <= 0', () => {
       expect(computeAnnualLoss({
         frequencyParams: validParams.frequencyParams,
-        costParams: { p50: 0, p95: 500000 },
+        costParams: { p50: 0, p95: 500000, p99: 2000000 },
       })).toBeNull();
     });
 
     it('returns null when cost p95 < p50', () => {
       expect(computeAnnualLoss({
         frequencyParams: validParams.frequencyParams,
-        costParams: { p50: 500000, p95: 100 },
+        costParams: { p50: 500000, p95: 100, p99: 2000000 },
       })).toBeNull();
     });
   });
