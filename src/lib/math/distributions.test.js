@@ -142,4 +142,30 @@ describe('computeDistribution', () => {
     expect(result).not.toBeNull();
     expect(result.x.length).toBeGreaterThan(0);
   });
+
+  it('returns null for loss section when required allParams are invalid', () => {
+    const result = computeDistribution('loss', null, {
+      frequencyParams: { p50: 0, p95: 10, p99: 50 },
+      costParams: { p50: 1000, p95: 10000, p99: 50000 },
+      frequencyDistType: 'lognormal',
+      costDistType: 'lognormal',
+    }, 'lognormal');
+    expect(result).toBeNull();
+  });
+
+  it('ignores distType argument for loss section and uses allParams dist types', () => {
+    const allParams = {
+      frequencyParams: { p50: 5, p95: 20, p99: 80 },
+      costParams: { min: 1000, mode: 50000, max: 500000 },
+      frequencyDistType: 'lognormal',
+      costDistType: 'pert',
+    };
+
+    const resultKnown = computeDistribution('loss', null, allParams, 'lognormal');
+    const resultUnknown = computeDistribution('loss', null, allParams, 'unknown');
+
+    expect(resultKnown).not.toBeNull();
+    expect(resultUnknown).not.toBeNull();
+    expect(resultKnown).toEqual(resultUnknown);
+  });
 });

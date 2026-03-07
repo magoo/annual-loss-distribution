@@ -66,6 +66,25 @@ describe('computePareto', () => {
     });
   });
 
+  describe('numerical stability', () => {
+    it('returns finite arrays for extreme heavy-tail quantiles', () => {
+      const result = computePareto({ p50: 1, p95: 10_000, p99: 1_000_000 });
+      expect(result).not.toBeNull();
+      expect(result.x.length).toBe(500);
+      expect(result.yPdf.length).toBe(result.x.length);
+      expect(result.yCdf.length).toBe(result.x.length);
+
+      for (let i = 0; i < result.x.length; i++) {
+        expect(Number.isFinite(result.x[i])).toBe(true);
+        expect(Number.isFinite(result.yPdf[i])).toBe(true);
+        expect(Number.isFinite(result.yCdf[i])).toBe(true);
+        if (i > 0) {
+          expect(result.x[i]).toBeGreaterThan(result.x[i - 1]);
+        }
+      }
+    });
+  });
+
   describe('CDF domain starts at scale', () => {
     it('first x value equals the fitted scale parameter', () => {
       const result = computePareto({ p50: 50, p95: 200, p99: 500 });

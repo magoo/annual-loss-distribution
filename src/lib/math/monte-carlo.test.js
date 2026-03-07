@@ -36,6 +36,46 @@ describe('computeAnnualLoss', () => {
     });
   });
 
+  describe('numerical stability and domain properties', () => {
+    it('returns finite arrays with strictly increasing x values', () => {
+      const result = computeAnnualLoss(validParams);
+      expect(result).not.toBeNull();
+      expect(result.x.length).toBe(500);
+      expect(result.yPdf.length).toBe(result.x.length);
+      expect(result.yCdf.length).toBe(result.x.length);
+
+      for (let i = 0; i < result.x.length; i++) {
+        expect(Number.isFinite(result.x[i])).toBe(true);
+        expect(result.x[i]).toBeGreaterThan(0);
+        expect(Number.isFinite(result.yPdf[i])).toBe(true);
+        expect(Number.isFinite(result.yCdf[i])).toBe(true);
+        if (i > 0) {
+          expect(result.x[i]).toBeGreaterThan(result.x[i - 1]);
+        }
+      }
+
+      expect(result.yCdf[0]).toBeGreaterThanOrEqual(0);
+      expect(result.yCdf[result.yCdf.length - 1]).toBeLessThanOrEqual(1);
+      expect(result.yCdf[result.yCdf.length - 1]).toBeGreaterThan(0.9);
+    });
+
+    it('handles extreme but valid mixed distributions without NaN/Infinity', () => {
+      const result = computeAnnualLoss({
+        frequencyParams: { p50: 0.01, p95: 2, p99: 20 },
+        costParams: { p50: 1000, p95: 2_000_000, p99: 50_000_000 },
+        frequencyDistType: 'pareto',
+        costDistType: 'lognormal',
+      });
+      expect(result).not.toBeNull();
+
+      for (let i = 0; i < result.x.length; i++) {
+        expect(Number.isFinite(result.x[i])).toBe(true);
+        expect(Number.isFinite(result.yPdf[i])).toBe(true);
+        expect(Number.isFinite(result.yCdf[i])).toBe(true);
+      }
+    });
+  });
+
   describe('P50/P95 fidelity (statistical)', () => {
     it('empirical CDF at theoretical median ≈ 0.50', () => {
       const Z_95 = 1.6449;
@@ -159,6 +199,22 @@ describe('computeAnnualLoss', () => {
       expect(computeAnnualLoss({
         frequencyParams: validParams.frequencyParams,
         costParams: { p50: 500000, p95: 100, p99: 2000000 },
+      })).toBeNull();
+    });
+
+    it('returns null when distribution type is unknown', () => {
+      expect(computeAnnualLoss({
+        frequencyParams: validParams.frequencyParams,
+        costParams: validParams.costParams,
+        frequencyDistType: 'unknown',
+        costDistType: 'lognormal',
+      })).toBeNull();
+
+      expect(computeAnnualLoss({
+        frequencyParams: validParams.frequencyParams,
+        costParams: validParams.costParams,
+        frequencyDistType: 'lognormal',
+        costDistType: 'unknown',
       })).toBeNull();
     });
   });

@@ -98,6 +98,22 @@ describe('computePert', () => {
     });
   });
 
+  describe('numerical stability', () => {
+    it('returns finite arrays for wide but valid ranges', () => {
+      const result = computePert({ min: 0, mode: 1, max: 1_000_000 });
+      expect(result).not.toBeNull();
+      expect(result.x.length).toBe(500);
+      expect(result.yPdf.length).toBe(result.x.length);
+      expect(result.yCdf.length).toBe(result.x.length);
+
+      for (let i = 0; i < result.x.length; i++) {
+        expect(Number.isFinite(result.x[i])).toBe(true);
+        expect(Number.isFinite(result.yPdf[i])).toBe(true);
+        expect(Number.isFinite(result.yCdf[i])).toBe(true);
+      }
+    });
+  });
+
   describe('invalid inputs', () => {
     it('returns null when min >= mode', () => {
       expect(computePert({ min: 5, mode: 5, max: 10 })).toBeNull();

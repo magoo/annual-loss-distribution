@@ -63,6 +63,23 @@ describe('computeLognormal', () => {
     });
   });
 
+  describe('numerical stability', () => {
+    it('returns finite, strictly increasing x values for extreme but valid quantiles', () => {
+      const result = computeLognormal({ p50: 0.001, p95: 1000, p99: 1_000_000 });
+      expect(result).not.toBeNull();
+      expect(result.x.length).toBe(500);
+
+      for (let i = 0; i < result.x.length; i++) {
+        expect(Number.isFinite(result.x[i])).toBe(true);
+        expect(Number.isFinite(result.yPdf[i])).toBe(true);
+        expect(Number.isFinite(result.yCdf[i])).toBe(true);
+        if (i > 0) {
+          expect(result.x[i]).toBeGreaterThan(result.x[i - 1]);
+        }
+      }
+    });
+  });
+
   describe('CDF domain coverage for CI interpolation', () => {
     const edgeCases = [
       { p50: 0.01, p95: 1, p99: 10, label: 'very small median' },

@@ -245,41 +245,53 @@ function setDistType(distType) {
 }
 
 // --- Scenario actions ---
-function toggleScenarioMode() {
+function seedDefaultScenarios() {
+  if (scenarios.length > 0) return;
+  scenarios = DEFAULT_SCENARIOS.map((s) => ({
+    id: nextScenarioId++,
+    name: s.name,
+    frequencyMethod: s.frequencyMethod,
+    frequencyParams: { ...s.frequencyParams },
+    costDistType: s.costDistType,
+    costParams: { ...s.costParams },
+  }));
+}
+
+function enableScenarioModeForActiveSection() {
   if (activeSection === 'frequency') {
-    frequencyScenarioMode = !frequencyScenarioMode;
-    if (frequencyScenarioMode) {
-      frequencyPanelists = [];
-      if (scenarios.length === 0) {
-        scenarios = DEFAULT_SCENARIOS.map((s) => ({
-          id: nextScenarioId++,
-          name: s.name,
-          frequencyMethod: s.frequencyMethod,
-          frequencyParams: { ...s.frequencyParams },
-          costDistType: s.costDistType,
-          costParams: { ...s.costParams },
-        }));
-      }
-    } else if (!costScenarioMode) {
-      scenarios = [];
-    }
+    if (frequencyScenarioMode) return;
+    frequencyScenarioMode = true;
+    frequencyPanelists = [];
+    seedDefaultScenarios();
   } else if (activeSection === 'cost') {
-    costScenarioMode = !costScenarioMode;
-    if (costScenarioMode) {
-      costPanelists = [];
-      if (scenarios.length === 0) {
-        scenarios = DEFAULT_SCENARIOS.map((s) => ({
-          id: nextScenarioId++,
-          name: s.name,
-          frequencyMethod: s.frequencyMethod,
-          frequencyParams: { ...s.frequencyParams },
-          costDistType: s.costDistType,
-          costParams: { ...s.costParams },
-        }));
-      }
-    } else if (!frequencyScenarioMode) {
-      scenarios = [];
-    }
+    if (costScenarioMode) return;
+    costScenarioMode = true;
+    costPanelists = [];
+    seedDefaultScenarios();
+  }
+}
+
+function disableScenarioModeForActiveSection() {
+  if (activeSection === 'frequency') {
+    if (!frequencyScenarioMode) return;
+    frequencyScenarioMode = false;
+    if (!costScenarioMode) scenarios = [];
+  } else if (activeSection === 'cost') {
+    if (!costScenarioMode) return;
+    costScenarioMode = false;
+    if (!frequencyScenarioMode) scenarios = [];
+  }
+}
+
+function toggleScenarioMode() {
+  const sectionScenarioMode = activeSection === 'frequency' ? frequencyScenarioMode
+    : activeSection === 'cost' ? costScenarioMode
+    : false;
+
+  if (sectionScenarioMode) {
+    disableScenarioModeForActiveSection();
+  } else {
+    enableScenarioModeForActiveSection();
   }
 }
 
@@ -450,6 +462,8 @@ export function getState() {
     setPanelistName,
     setPanelistParam,
     toggleScenarioMode,
+    enableScenarioModeForActiveSection,
+    disableScenarioModeForActiveSection,
     addScenario,
     removeScenario,
     setScenarioName,

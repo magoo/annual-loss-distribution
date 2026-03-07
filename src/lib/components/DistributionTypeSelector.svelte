@@ -1,19 +1,32 @@
 <script>
   import { DIST_CONFIGS, DIST_TYPES } from '../math/distributions.js';
 
-  let { selected, onchange } = $props();
+  let {
+    selected,
+    scenarioActive = false,
+    onselectdist,
+    onselectscenario,
+  } = $props();
 </script>
 
 <div class="dist-type-toggle">
   {#each DIST_TYPES as dt (dt)}
     <button
       class="toggle-btn"
-      class:active={selected === dt}
-      onclick={() => onchange(dt)}
+      class:active={!scenarioActive && selected === dt}
+      onclick={() => onselectdist(dt)}
     >
       {DIST_CONFIGS[dt].label}
     </button>
   {/each}
+
+  <button
+    class="toggle-btn"
+    class:active={scenarioActive}
+    onclick={onselectscenario}
+  >
+    Scenario Mode
+  </button>
 </div>
 
 <style>

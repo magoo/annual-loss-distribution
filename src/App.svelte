@@ -3,19 +3,24 @@
   import ViewToggle from './lib/components/ViewToggle.svelte';
   import DistributionSelector from './lib/components/DistributionSelector.svelte';
   import DistributionTypeSelector from './lib/components/DistributionTypeSelector.svelte';
+  import ModeDescription from './lib/components/ModeDescription.svelte';
   import ParameterInputs from './lib/components/ParameterInputs.svelte';
   import PanelMode from './lib/components/PanelMode.svelte';
   import PanelAnalytics from './lib/components/PanelAnalytics.svelte';
   import ConfidenceInterval from './lib/components/ConfidenceInterval.svelte';
   import ExecutiveReport from './lib/components/ExecutiveReport.svelte';
   import MonteCarloDescription from './lib/components/MonteCarloDescription.svelte';
-  import ScenarioToggle from './lib/components/ScenarioToggle.svelte';
   import ScenarioMode from './lib/components/ScenarioMode.svelte';
   import { getState } from './lib/state/app-state.svelte.js';
 
   const appState = getState();
 
   let confidenceLevel = $state(90);
+
+  function handleDistributionTypeSelect(distType) {
+    appState.disableScenarioModeForActiveSection();
+    appState.setDistType(distType);
+  }
 </script>
 
 <main>
@@ -30,9 +35,31 @@
       onselect={appState.setActiveSection}
     />
 
-    <ScenarioToggle active={appState.scenarioMode} ontoggle={appState.toggleScenarioMode} />
+    {#if appState.activeSection !== 'loss'}
+      <DistributionTypeSelector
+        selected={appState.activeDistType}
+        scenarioActive={appState.scenarioMode}
+        onselectdist={handleDistributionTypeSelect}
+        onselectscenario={appState.enableScenarioModeForActiveSection}
+      />
+
+      <ModeDescription
+        activeSection={appState.activeSection}
+        activeDistType={appState.activeDistType}
+        scenarioActive={appState.scenarioMode}
+      />
+    {/if}
 
     {#if appState.scenarioMode}
+      <section class="chart-section">
+        <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} />
+        <div class="chart-controls">
+          <ViewToggle view={appState.view} onchange={appState.setView} />
+        </div>
+      </section>
+
+      <ConfidenceInterval chartData={appState.chartData} useDollars={appState.useDollars} activeSection={appState.activeSection} bind:confidenceLevel />
+
       {#if appState.activeSection !== 'loss'}
         <ScenarioMode
           scenarios={appState.scenarios}
@@ -47,13 +74,6 @@
         />
       {/if}
     {:else}
-      {#if appState.activeSection !== 'loss'}
-        <DistributionTypeSelector
-          selected={appState.activeDistType}
-          onchange={appState.setDistType}
-        />
-      {/if}
-
       {#if !appState.panelActive && appState.activeSection !== 'loss'}
         <ParameterInputs
           distConfig={appState.activeDistConfig}
@@ -82,6 +102,15 @@
         <PanelAnalytics sectionKey="frequency" distType={appState.frequencyDistType} analytics={appState.panelAnalytics?.frequency} />
         <PanelAnalytics sectionKey="cost" distType={appState.costDistType} analytics={appState.panelAnalytics?.cost} />
       {/if}
+
+      <section class="chart-section">
+        <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} />
+        <div class="chart-controls">
+          <ViewToggle view={appState.view} onchange={appState.setView} />
+        </div>
+      </section>
+
+      <ConfidenceInterval chartData={appState.chartData} useDollars={appState.useDollars} activeSection={appState.activeSection} bind:confidenceLevel />
     {/if}
   </section>
 
@@ -96,15 +125,6 @@
       scenarios={appState.scenarios}
     />
   {/if}
-
-  <section class="chart-section">
-    <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} />
-    <div class="chart-controls">
-      <ViewToggle view={appState.view} onchange={appState.setView} />
-    </div>
-  </section>
-
-  <ConfidenceInterval chartData={appState.chartData} useDollars={appState.useDollars} activeSection={appState.activeSection} bind:confidenceLevel />
 
   {#if appState.activeSection === 'loss'}
     <ExecutiveReport
