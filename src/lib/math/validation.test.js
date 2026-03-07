@@ -37,6 +37,16 @@ describe('validateQuantiles', () => {
       const errors = validateQuantiles({ p50: 10, p95: 100, p99: NaN });
       expect(errors.p99).toBe('Required');
     });
+
+    it('Infinity p50 returns finite-number error', () => {
+      const errors = validateQuantiles({ p50: Infinity, p95: 100, p99: 500 });
+      expect(errors.p50).toBe('Must be a finite number');
+    });
+
+    it('-Infinity p95 returns finite-number error', () => {
+      const errors = validateQuantiles({ p50: 10, p95: -Infinity, p99: 500 });
+      expect(errors.p95).toBe('Must be a finite number');
+    });
   });
 
   describe('negative values', () => {
@@ -115,6 +125,11 @@ describe('validatePert', () => {
       const errors = validatePert({ min: 0, mode: 5, max: NaN });
       expect(errors.max).toBe('Required');
     });
+
+    it('Infinity mode returns finite-number error', () => {
+      const errors = validatePert({ min: 0, mode: Infinity, max: 10 });
+      expect(errors.mode).toBe('Must be a finite number');
+    });
   });
 
   describe('value constraints', () => {
@@ -169,5 +184,10 @@ describe('validate dispatcher', () => {
   it('unknown distType defaults to quantile validation', () => {
     const errors = validate('frequency', { p50: -1, p95: 100, p99: 500 }, 'unknown');
     expect(errors.p50).toBeTruthy();
+  });
+
+  it('distType=odds rejects non-finite values', () => {
+    const errors = validate('frequency', { odds: Infinity }, 'odds');
+    expect(errors.odds).toBe('Must be a finite number');
   });
 });
