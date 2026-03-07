@@ -1,7 +1,14 @@
 <script>
   import { onMount } from 'svelte';
+  import { interpolatePercentile } from '../math/percentile.js';
 
-  let { chartData, view, useDollars = true, activeSection = 'frequency' } = $props();
+  let {
+    chartData,
+    view,
+    useDollars = true,
+    activeSection = 'frequency',
+    focusPercentile = 99.5,
+  } = $props();
 
   let containerEl;
   let Plotly;
@@ -11,6 +18,64 @@
     Plotly = (await import('plotly.js-basic-dist-min')).default;
     plotlyReady = true;
   });
+
+  function formatXValue(xVal) {
+    if (useDollars) {
+      return '$' + xVal.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+    return xVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function interpolateCdfAtX(xVals, yCdfVals, targetX) {
+    if (!xVals || !yCdfVals || xVals.length === 0 || yCdfVals.length === 0) return 0;
+    if (targetX <= xVals[0]) return yCdfVals[0];
+    if (targetX >= xVals[xVals.length - 1]) return yCdfVals[yCdfVals.length - 1];
+
+    for (let i = 1; i < xVals.length; i++) {
+      if (xVals[i] >= targetX) {
+        const dx = xVals[i] - xVals[i - 1];
+        if (dx === 0) return yCdfVals[i];
+        const t = (targetX - xVals[i - 1]) / dx;
+        return yCdfVals[i - 1] + t * (yCdfVals[i] - yCdfVals[i - 1]);
+      }
+    }
+
+    return yCdfVals[yCdfVals.length - 1];
+  }
+
+  function buildHoverText(xVal, cdfVal, extraLine = '') {
+    const valueLabel = formatXValue(xVal);
+    const percentile = (Math.max(0, Math.min(1, cdfVal)) * 100).toFixed(1);
+    const lines = [valueLabel];
+    if (extraLine) lines.push(extraLine);
+    lines.push(`Percentile: ${percentile}%`);
+
+    if (activeSection === 'loss') {
+      const exceedance = ((1 - Math.max(0, Math.min(1, cdfVal))) * 100).toFixed(1);
+      lines.push(`${exceedance}% chance of losing more than ${valueLabel}`);
+    }
+
+    return lines.join('<br>');
+  }
+
+  function computeFocusedRange(data, upperPercentile) {
+    if (!data?.x || !data?.yCdf || data.x.length === 0 || data.yCdf.length === 0) return null;
+    if (!isFinite(upperPercentile) || upperPercentile >= 1) return null;
+
+    let lower = interpolatePercentile(data.x, data.yCdf, 0.005);
+    let upper = interpolatePercentile(data.x, data.yCdf, upperPercentile);
+
+    if (!isFinite(lower) || !isFinite(upper)) return null;
+
+    if (useDollars && lower <= 0) {
+      const firstPositive = data.x.find((v) => v > 0);
+      if (!firstPositive) return null;
+      lower = firstPositive;
+    }
+
+    if (upper <= lower) return null;
+    return { lower, upper };
+  }
 
   $effect(() => {
     if (!plotlyReady || !containerEl) return;
@@ -36,6 +101,10 @@
     }
 
     const isPdf = view === 'pdf';
+    const isLossSection = activeSection === 'loss';
+    const canFocusRange = true;
+    const upperPercentile = Math.max(0.95, Math.min(1, Number(focusPercentile) / 100));
+    const focusedRange = canFocusRange ? computeFocusedRange(chartData, upperPercentile) : null;
 
     // Histogram mode (scenario MC) vs standard continuous mode
     if (chartData.isHistogram) {
@@ -82,6 +151,10 @@
             const total = chartData.samples.length;
             const hovertext = centers.map((center, i) => {
               const pct = ((counts[i] / total) * 100).toFixed(1);
+              if (isLossSection) {
+                const cdfAtCenter = interpolateCdfAtX(chartData.x, chartData.yCdf, center);
+                return buildHoverText(center, cdfAtCenter, `Bin share: ${pct}%`);
+              }
               const label = '$' + center.toLocaleString('en-US', { maximumFractionDigits: 0 });
               return `${label} (${pct}%)`;
             });
@@ -110,6 +183,10 @@
           const hovertext = keys.map((k) => {
             const count = valueCounts.get(k);
             const pct = ((count / total) * 100).toFixed(1);
+            if (isLossSection) {
+              const cdfAtK = interpolateCdfAtX(chartData.x, chartData.yCdf, k);
+              return buildHoverText(k, cdfAtK, `Occurrences: ${pct}%`);
+            }
             return `${k} incidents (${pct}%)`;
           });
           trace = {
@@ -139,12 +216,17 @@
         }
       } else {
         // Empirical CDF line
+        const hovertext = isLossSection
+          ? chartData.x.map((xVal, i) => buildHoverText(xVal, chartData.yCdf[i]))
+          : null;
+
         trace = {
           x: chartData.x,
           y: chartData.yCdf,
           type: 'scatter',
           mode: 'lines',
           line: { color: '#4361ee', width: 2.5, shape: 'spline' },
+          ...(hovertext ? { hoverinfo: 'text', hovertext } : {}),
         };
       }
 
@@ -162,6 +244,13 @@
             font: { size: 12, color: '#6b7280', family: 'Inter, sans-serif' },
           },
           ...(useDollars ? { type: 'log' } : {}),
+          ...(focusedRange
+            ? {
+                range: useDollars
+                  ? [Math.log10(focusedRange.lower), Math.log10(focusedRange.upper)]
+                  : [focusedRange.lower, focusedRange.upper],
+              }
+            : {}),
           gridcolor: '#f0f0f0',
           zerolinecolor: '#e5e7eb',
           tickprefix: useDollars ? '$' : '',
@@ -195,13 +284,13 @@
 
     // Build custom hover text with conditional formatting
     const hovertext = chartData.x.map((xVal, i) => {
-      let valStr;
-      if (useDollars) {
-        valStr = '$' + xVal.toLocaleString('en-US', { maximumFractionDigits: 0 });
-      } else {
-        valStr = xVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const cdfVal = chartData.yCdf[i];
+      if (isLossSection) {
+        return buildHoverText(xVal, cdfVal);
       }
-      const pct = (chartData.yCdf[i] * 100).toFixed(1);
+
+      const valStr = formatXValue(xVal);
+      const pct = (cdfVal * 100).toFixed(1);
       return `${valStr}<br>Percentile: ${pct}%`;
     });
 
@@ -228,6 +317,7 @@
       plot_bgcolor: 'rgba(0,0,0,0)',
       margin: { t: 16, r: 24, b: 40, l: 56 },
       xaxis: {
+        ...(focusedRange ? { range: [focusedRange.lower, focusedRange.upper] } : {}),
         gridcolor: '#f0f0f0',
         zerolinecolor: '#e5e7eb',
         tickprefix: useDollars ? '$' : '',

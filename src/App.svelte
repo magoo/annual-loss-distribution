@@ -1,6 +1,7 @@
 <script>
   import PlotlyChart from './lib/components/PlotlyChart.svelte';
   import ViewToggle from './lib/components/ViewToggle.svelte';
+  import FocusSlider from './lib/components/FocusSlider.svelte';
   import DistributionSelector from './lib/components/DistributionSelector.svelte';
   import DistributionTypeSelector from './lib/components/DistributionTypeSelector.svelte';
   import ModeDescription from './lib/components/ModeDescription.svelte';
@@ -16,6 +17,7 @@
   const appState = getState();
 
   let confidenceLevel = $state(90);
+  let focusPercentile = $state(99.5);
 
   function handleDistributionTypeSelect(distType) {
     appState.disableScenarioModeForActiveSection();
@@ -52,9 +54,10 @@
 
     {#if appState.scenarioMode}
       <section class="chart-section">
-        <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} />
+        <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} {focusPercentile} />
         <div class="chart-controls">
           <ViewToggle view={appState.view} onchange={appState.setView} />
+          <FocusSlider bind:focusPercentile />
         </div>
       </section>
 
@@ -104,9 +107,10 @@
       {/if}
 
       <section class="chart-section">
-        <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} />
+        <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} {focusPercentile} />
         <div class="chart-controls">
           <ViewToggle view={appState.view} onchange={appState.setView} />
+          <FocusSlider bind:focusPercentile />
         </div>
       </section>
 
@@ -210,6 +214,9 @@
 
   .chart-controls {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-2);
     justify-content: flex-end;
   }
 
