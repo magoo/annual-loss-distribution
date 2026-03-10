@@ -2,7 +2,13 @@
   import { interpolatePercentile } from '../math/percentile.js';
   import { formatValue, formatCompact } from '../math/formatting.js';
 
-  let { chartData, useDollars, activeSection, confidenceLevel = $bindable(90) } = $props();
+  let {
+    chartData,
+    useDollars,
+    activeSection,
+    confidenceLevel = $bindable(90),
+    compact = false,
+  } = $props();
   let copied = $state(false);
   let copyTimeout;
 
@@ -40,7 +46,7 @@
 </script>
 
 {#if chartData}
-  <div class="ci-card">
+  <div class="ci-card" class:compact>
     <h3 class="ci-title">Confidence Interval</h3>
 
     <div class="slider-row">
@@ -73,21 +79,23 @@
       </div>
     </div>
 
-    <div class="summary-row">
-      <p class="summary-text">{summaryText}</p>
-      <button class="copy-btn" onclick={copyToClipboard} title="Copy to clipboard">
-        {#if copied}
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        {:else}
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" stroke-width="1.5"/>
-          </svg>
-        {/if}
-      </button>
-    </div>
+    {#if !compact}
+      <div class="summary-row">
+        <p class="summary-text">{summaryText}</p>
+        <button class="copy-btn" onclick={copyToClipboard} title="Copy to clipboard">
+          {#if copied}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          {:else}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" stroke-width="1.5"/>
+            </svg>
+          {/if}
+        </button>
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -100,6 +108,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-4);
+  }
+
+  .ci-card.compact {
+    gap: var(--spacing-3);
   }
 
   .ci-title {

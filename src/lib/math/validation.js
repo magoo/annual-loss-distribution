@@ -104,8 +104,8 @@ export function validateOdds(params) {
     errors.odds = 'Required';
   } else if (isNonFinite(odds)) {
     errors.odds = 'Must be a finite number';
-  } else if (odds <= 0) {
-    errors.odds = 'Must be greater than 0';
+  } else if (odds < 1) {
+    errors.odds = 'Must be at least 1 (means "1 in N years")';
   }
 
   return errors;

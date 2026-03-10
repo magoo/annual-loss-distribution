@@ -96,8 +96,8 @@ function computeAnalytics(panelistList, sectionKey) {
       const avg = values.reduce((a, b) => a + b, 0) / values.length;
       const min = Math.min(...values);
       const max = Math.max(...values);
-      const variance = values.reduce((sum, v) => sum + (v - avg) ** 2, 0) / values.length;
-      const stddev = Math.sqrt(variance);
+      const variance = values.reduce((sum, v) => sum + (v - avg) ** 2, 0) / (values.length - 1);
+      const stddev = values.length > 1 ? Math.sqrt(variance) : 0;
       analytics[field.key] = { avg, min, max, stddev };
     }
   }

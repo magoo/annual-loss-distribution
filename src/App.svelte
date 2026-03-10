@@ -3,14 +3,13 @@
   import ViewToggle from './lib/components/ViewToggle.svelte';
   import FocusSlider from './lib/components/FocusSlider.svelte';
   import DistributionSelector from './lib/components/DistributionSelector.svelte';
+  import SectionDescription from './lib/components/SectionDescription.svelte';
   import DistributionTypeSelector from './lib/components/DistributionTypeSelector.svelte';
   import ModeDescription from './lib/components/ModeDescription.svelte';
   import ParameterInputs from './lib/components/ParameterInputs.svelte';
   import PanelMode from './lib/components/PanelMode.svelte';
   import PanelAnalytics from './lib/components/PanelAnalytics.svelte';
   import ConfidenceInterval from './lib/components/ConfidenceInterval.svelte';
-  import ExecutiveReport from './lib/components/ExecutiveReport.svelte';
-  import MonteCarloDescription from './lib/components/MonteCarloDescription.svelte';
   import ScenarioMode from './lib/components/ScenarioMode.svelte';
   import { getState } from './lib/state/app-state.svelte.js';
 
@@ -32,24 +31,47 @@
   </header>
 
   <section class="input-section">
-    <DistributionSelector
-      selected={appState.activeSection}
-      onselect={appState.setActiveSection}
-    />
+    <div class="workflow-start-card">
+      <p class="workflow-start-label">Start Here</p>
+
+      <DistributionSelector
+        selected={appState.activeSection}
+        onselect={appState.setActiveSection}
+      />
+
+      <SectionDescription
+        activeSection={appState.activeSection}
+        chartData={appState.chartData}
+        {confidenceLevel}
+        frequencyParams={appState.effectiveFrequencyParams}
+        costParams={appState.effectiveCostParams}
+        frequencyDistType={appState.frequencyDistType}
+        costDistType={appState.costDistType}
+        frequencyScenarioMode={appState.frequencyScenarioMode}
+        costScenarioMode={appState.costScenarioMode}
+        frequencyPanelActive={appState.frequencyPanelActive}
+        costPanelActive={appState.costPanelActive}
+        frequencyPanelists={appState.frequencyPanelists}
+        costPanelists={appState.costPanelists}
+        scenarios={appState.scenarios}
+      />
+    </div>
 
     {#if appState.activeSection !== 'loss'}
-      <DistributionTypeSelector
-        selected={appState.activeDistType}
-        scenarioActive={appState.scenarioMode}
-        onselectdist={handleDistributionTypeSelect}
-        onselectscenario={appState.enableScenarioModeForActiveSection}
-      />
+      <div class="distribution-mode-card">
+        <DistributionTypeSelector
+          selected={appState.activeDistType}
+          scenarioActive={appState.scenarioMode}
+          onselectdist={handleDistributionTypeSelect}
+          onselectscenario={appState.enableScenarioModeForActiveSection}
+        />
 
-      <ModeDescription
-        activeSection={appState.activeSection}
-        activeDistType={appState.activeDistType}
-        scenarioActive={appState.scenarioMode}
-      />
+        <ModeDescription
+          activeSection={appState.activeSection}
+          activeDistType={appState.activeDistType}
+          scenarioActive={appState.scenarioMode}
+        />
+      </div>
     {/if}
 
     {#if appState.scenarioMode}
@@ -61,7 +83,13 @@
         </div>
       </section>
 
-      <ConfidenceInterval chartData={appState.chartData} useDollars={appState.useDollars} activeSection={appState.activeSection} bind:confidenceLevel />
+      <ConfidenceInterval
+        chartData={appState.chartData}
+        useDollars={appState.useDollars}
+        activeSection={appState.activeSection}
+        bind:confidenceLevel
+        compact={appState.activeSection === 'loss'}
+      />
 
       {#if appState.activeSection !== 'loss'}
         <ScenarioMode
@@ -114,39 +142,15 @@
         </div>
       </section>
 
-      <ConfidenceInterval chartData={appState.chartData} useDollars={appState.useDollars} activeSection={appState.activeSection} bind:confidenceLevel />
+      <ConfidenceInterval
+        chartData={appState.chartData}
+        useDollars={appState.useDollars}
+        activeSection={appState.activeSection}
+        bind:confidenceLevel
+        compact={appState.activeSection === 'loss'}
+      />
     {/if}
   </section>
-
-  {#if appState.activeSection === 'loss'}
-    <MonteCarloDescription
-      frequencyParams={appState.effectiveFrequencyParams}
-      costParams={appState.effectiveCostParams}
-      frequencyDistType={appState.frequencyDistType}
-      costDistType={appState.costDistType}
-      frequencyScenarioMode={appState.frequencyScenarioMode}
-      costScenarioMode={appState.costScenarioMode}
-      scenarios={appState.scenarios}
-    />
-  {/if}
-
-  {#if appState.activeSection === 'loss'}
-    <ExecutiveReport
-      chartData={appState.chartData}
-      effectiveFrequencyParams={appState.effectiveFrequencyParams}
-      effectiveCostParams={appState.effectiveCostParams}
-      frequencyPanelists={appState.frequencyPanelists}
-      costPanelists={appState.costPanelists}
-      frequencyPanelActive={appState.frequencyPanelActive}
-      costPanelActive={appState.costPanelActive}
-      frequencyDistType={appState.frequencyDistType}
-      costDistType={appState.costDistType}
-      frequencyScenarioMode={appState.frequencyScenarioMode}
-      costScenarioMode={appState.costScenarioMode}
-      scenarios={appState.scenarios}
-      {confidenceLevel}
-    />
-  {/if}
 </main>
 
 <footer>
@@ -204,6 +208,38 @@
     display: flex;
     flex-direction: column;
     gap: var(--spacing-4);
+  }
+
+  .workflow-start-card {
+    background: linear-gradient(180deg, rgba(67, 97, 238, 0.05) 0%, rgba(67, 97, 238, 0) 52%), var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-top: 3px solid var(--color-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
+  }
+
+  .workflow-start-label {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-primary);
+    margin: 0;
+  }
+
+  .distribution-mode-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    padding: var(--spacing-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-3);
   }
 
   .chart-section {

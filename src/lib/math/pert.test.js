@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { fitPert, computePert } from './pert.js';
+import { interpolateCdf } from './test-utils.js';
 
 describe('fitPert', () => {
   it('symmetric case: min=0, mode=5, max=10 gives alpha ≈ beta ≈ 3', () => {
@@ -85,6 +86,34 @@ describe('computePert', () => {
 
       // Peak should be near the mode
       expect(xAtPeak).toBeCloseTo(mode, 0);
+    });
+  });
+
+  describe('CDF fidelity at mode', () => {
+    it('symmetric PERT(0, 5, 10): CDF at mode ≈ 0.5', () => {
+      const result = computePert({ min: 0, mode: 5, max: 10 });
+      expect(result).not.toBeNull();
+
+      const cdfAtMode = interpolateCdf(result.x, result.yCdf, 5);
+      expect(cdfAtMode).toBeCloseTo(0.5, 1);
+    });
+
+    it('left-skewed PERT(0, 2, 10): CDF at mode < 0.5', () => {
+      const result = computePert({ min: 0, mode: 2, max: 10 });
+      expect(result).not.toBeNull();
+
+      const cdfAtMode = interpolateCdf(result.x, result.yCdf, 2);
+      expect(cdfAtMode).toBeGreaterThan(0.1);
+      expect(cdfAtMode).toBeLessThan(0.5);
+    });
+
+    it('right-skewed PERT(0, 8, 10): CDF at mode > 0.5', () => {
+      const result = computePert({ min: 0, mode: 8, max: 10 });
+      expect(result).not.toBeNull();
+
+      const cdfAtMode = interpolateCdf(result.x, result.yCdf, 8);
+      expect(cdfAtMode).toBeGreaterThan(0.5);
+      expect(cdfAtMode).toBeLessThan(0.9);
     });
   });
 

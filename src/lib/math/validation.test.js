@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateQuantiles, validatePert, validate } from './validation.js';
+import { validateQuantiles, validatePert, validateOdds, validate } from './validation.js';
 
 describe('validateQuantiles', () => {
   it('returns empty errors for valid params', () => {
@@ -157,6 +157,39 @@ describe('validatePert', () => {
       const errors = validatePert({ min: 0, mode: 10, max: 5 });
       expect(errors.max).toBeTruthy();
     });
+  });
+});
+
+describe('validateOdds', () => {
+  it('returns empty errors for odds = 1', () => {
+    expect(validateOdds({ odds: 1 })).toEqual({});
+  });
+
+  it('returns empty errors for odds > 1', () => {
+    expect(validateOdds({ odds: 10 })).toEqual({});
+  });
+
+  it('returns error for odds < 1', () => {
+    const errors = validateOdds({ odds: 0.5 });
+    expect(errors.odds).toBeTruthy();
+  });
+
+  it('returns error for odds = 0', () => {
+    const errors = validateOdds({ odds: 0 });
+    expect(errors.odds).toBeTruthy();
+  });
+
+  it('returns error for negative odds', () => {
+    const errors = validateOdds({ odds: -1 });
+    expect(errors.odds).toBeTruthy();
+  });
+
+  it('returns Required for missing odds', () => {
+    expect(validateOdds({}).odds).toBe('Required');
+  });
+
+  it('returns Required for NaN odds', () => {
+    expect(validateOdds({ odds: NaN }).odds).toBe('Required');
   });
 });
 

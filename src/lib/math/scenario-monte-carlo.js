@@ -2,24 +2,11 @@ import { jStat } from 'jstat';
 import { fitLognormalOLS } from './lognormal.js';
 import { fitParetoOLS } from './pareto.js';
 import { fitPert } from './pert.js';
+import { createRng } from './rng.js';
 
 const DEFAULT_SEED = 54321;
 const NUM_ROUNDS = 10000;
 const NUM_PLOT_POINTS = 500;
-
-/**
- * Mulberry32 seeded PRNG. Returns values in [0, 1).
- */
-function createRng(seed = DEFAULT_SEED) {
-  let s = seed | 0;
-  return function () {
-    s |= 0;
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /**
  * Build an inverse-CDF sampler for a given distribution type and params.

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { fitParetoOLS, computePareto } from './pareto.js';
+import { interpolateCdf } from './test-utils.js';
 
 describe('fitParetoOLS', () => {
   it('recovers scale and shape from exact Pareto quantiles', () => {
@@ -103,6 +104,35 @@ describe('computePareto', () => {
       // The x range should extend well beyond p50
       const maxX = result.x[result.x.length - 1];
       expect(maxX).toBeGreaterThan(500);
+    });
+  });
+
+  describe('P50/P95/P99 fidelity', () => {
+    const cases = [
+      { p50: 50, p95: 200, p99: 500, label: 'typical' },
+      { p50: 1, p95: 100, p99: 10000, label: 'heavy tail' },
+      { p50: 10000, p95: 50000, p99: 200000, label: 'large scale' },
+    ];
+
+    for (const { p50, p95, p99, label } of cases) {
+      it(`CDF ≈ 0.50 at p50 and ≈ 0.95 at p95 (${label})`, () => {
+        const result = computePareto({ p50, p95, p99 });
+        expect(result).not.toBeNull();
+
+        const cdfAtP50 = interpolateCdf(result.x, result.yCdf, p50);
+        const cdfAtP95 = interpolateCdf(result.x, result.yCdf, p95);
+
+        expect(cdfAtP50).toBeCloseTo(0.5, 1);
+        expect(cdfAtP95).toBeCloseTo(0.95, 1);
+      });
+    }
+
+    it('CDF ≈ 0.99 at p99', () => {
+      const result = computePareto({ p50: 50, p95: 200, p99: 500 });
+      expect(result).not.toBeNull();
+
+      const cdfAtP99 = interpolateCdf(result.x, result.yCdf, 500);
+      expect(cdfAtP99).toBeCloseTo(0.99, 1);
     });
   });
 

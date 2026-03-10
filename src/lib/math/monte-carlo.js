@@ -2,24 +2,11 @@ import { jStat } from 'jstat';
 import { fitLognormalOLS } from './lognormal.js';
 import { fitParetoOLS } from './pareto.js';
 import { fitPert } from './pert.js';
+import { createRng } from './rng.js';
 
 const DEFAULT_SEED = 12345;
 const NUM_SAMPLES = 100000;
 const NUM_PLOT_POINTS = 500;
-
-/**
- * Mulberry32 seeded PRNG. Returns values in [0, 1).
- */
-function createRng(seed = DEFAULT_SEED) {
-  let s = seed | 0;
-  return function () {
-    s |= 0;
-    s = (s + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 15), 1 | s);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 /**
  * Sample from a distribution using inverse transform sampling with seeded RNG.
@@ -161,7 +148,10 @@ export function computeAnnualLoss(allParams) {
 
   if (!freqSamples || !costSamples) return null;
 
-  // Pairwise multiplication
+  // Pairwise multiplication: treats frequency as a continuous scale factor.
+  // This differs from scenario mode's compound model (N = round(freq), sum of N cost draws).
+  // Both have the same E[Loss] = E[Freq] * E[Cost] but different variances.
+  // The compound model is actuarially standard; this is a simpler FAIR-style approximation.
   const lossSamples = new Float64Array(NUM_SAMPLES);
   for (let i = 0; i < NUM_SAMPLES; i++) {
     lossSamples[i] = freqSamples[i] * costSamples[i];

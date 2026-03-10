@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeLognormal, fitLognormalOLS } from './lognormal.js';
+import { interpolateCdf } from './test-utils.js';
 
 describe('computeLognormal', () => {
   describe('P50/P95/P99 fidelity', () => {
@@ -166,16 +167,3 @@ describe('fitLognormalOLS', () => {
   });
 });
 
-/**
- * Linear interpolation to find CDF value at a target x.
- */
-function interpolateCdf(x, yCdf, target) {
-  for (let i = 0; i < x.length - 1; i++) {
-    if (x[i] <= target && target <= x[i + 1]) {
-      const t = (target - x[i]) / (x[i + 1] - x[i]);
-      return yCdf[i] + t * (yCdf[i + 1] - yCdf[i]);
-    }
-  }
-  if (target <= x[0]) return yCdf[0];
-  return yCdf[yCdf.length - 1];
-}

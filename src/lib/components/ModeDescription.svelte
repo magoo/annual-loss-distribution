@@ -31,15 +31,13 @@
 
 <style>
   .mode-description {
-    background: var(--color-primary-light);
-    border: 1px solid rgba(67, 97, 238, 0.18);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-4);
+    padding-top: var(--spacing-1);
   }
 
   .mode-description p {
     font-size: var(--font-size-sm);
     color: var(--color-text-secondary);
     line-height: 1.6;
+    margin: 0;
   }
 </style>

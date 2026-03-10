@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { computeAnnualLoss } from './monte-carlo.js';
+import { interpolateCdf } from './test-utils.js';
 
 const validParams = {
   frequencyParams: { p50: 5, p95: 20, p99: 80 },
@@ -218,18 +219,23 @@ describe('computeAnnualLoss', () => {
       })).toBeNull();
     });
   });
+
+  describe('KDE PDF normalization', () => {
+    it('trapezoidal integral of PDF ≈ 1', () => {
+      const result = computeAnnualLoss(validParams);
+      expect(result).not.toBeNull();
+
+      // Trapezoidal integration over the returned x/yPdf arrays
+      let integral = 0;
+      for (let i = 0; i < result.x.length - 1; i++) {
+        const dx = result.x[i + 1] - result.x[i];
+        integral += 0.5 * (result.yPdf[i] + result.yPdf[i + 1]) * dx;
+      }
+
+      // Generous bounds: we only cover P0.1-P99 so some mass is outside
+      expect(integral).toBeGreaterThan(0.8);
+      expect(integral).toBeLessThan(1.2);
+    });
+  });
 });
 
-/**
- * Linear interpolation to find CDF value at a target x.
- */
-function interpolateCdf(x, yCdf, target) {
-  for (let i = 0; i < x.length - 1; i++) {
-    if (x[i] <= target && target <= x[i + 1]) {
-      const t = (target - x[i]) / (x[i + 1] - x[i]);
-      return yCdf[i] + t * (yCdf[i + 1] - yCdf[i]);
-    }
-  }
-  if (target <= x[0]) return yCdf[0];
-  return yCdf[yCdf.length - 1];
-}
