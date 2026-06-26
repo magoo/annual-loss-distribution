@@ -11,7 +11,7 @@ function isNonFinite(value) {
 }
 
 export function validateQuantiles(params) {
-  const { p50, p95, p99 } = params;
+  const { p50, p95 } = params;
   const errors = {};
 
   if (isMissingNumber(p50)) {
@@ -30,23 +30,9 @@ export function validateQuantiles(params) {
     errors.p95 = 'Must be greater than 0';
   }
 
-  if (isMissingNumber(p99)) {
-    errors.p99 = 'Required';
-  } else if (isNonFinite(p99)) {
-    errors.p99 = 'Must be a finite number';
-  } else if (p99 <= 0) {
-    errors.p99 = 'Must be greater than 0';
-  }
-
   if (!errors.p50 && !errors.p95) {
     if (p95 <= p50) {
       errors.p95 = 'P95 must be greater than P50';
-    }
-  }
-
-  if (!errors.p95 && !errors.p99) {
-    if (p99 <= p95) {
-      errors.p99 = 'P99 must be greater than P95';
     }
   }
 

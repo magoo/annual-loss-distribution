@@ -42,7 +42,7 @@
     if (distType === 'pert') {
       return `min ${formatCompact(params.min, useDollars)}, mode ${formatCompact(params.mode, useDollars)}, max ${formatCompact(params.max, useDollars)}`;
     }
-    return `P50: ${formatCompact(params.p50, useDollars)}, P95: ${formatCompact(params.p95, useDollars)}, P99: ${formatCompact(params.p99, useDollars)}`;
+    return `P50: ${formatCompact(params.p50, useDollars)}, P95: ${formatCompact(params.p95, useDollars)}`;
   }
 
   const frequencySentence = $derived.by(() => {

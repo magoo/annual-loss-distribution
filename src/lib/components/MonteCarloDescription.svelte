@@ -11,7 +11,7 @@
     if (distType === 'pert') {
       return `Min: ${formatCompact(params.min, useDollars)}, Mode: ${formatCompact(params.mode, useDollars)}, Max: ${formatCompact(params.max, useDollars)}`;
     }
-    return `P50: ${formatCompact(params.p50, useDollars)}, P95: ${formatCompact(params.p95, useDollars)}, P99: ${formatCompact(params.p99, useDollars)}`;
+    return `P50: ${formatCompact(params.p50, useDollars)}, P95: ${formatCompact(params.p95, useDollars)}`;
   }
 </script>
 
@@ -37,7 +37,7 @@
       by the <strong>Cost</strong> ({costLabel}: {paramSummary(costParams, costDistType, true)})
       to produce an annual loss distribution.
       {#if frequencyDistType !== 'pert' || costDistType !== 'pert'}
-        P50 is the median — half of outcomes fall below this value. P95 means only 5% of outcomes exceed it. P99 represents a 1-in-100 extreme scenario.
+        P50 is the median — half of outcomes fall below this value. P95 means only 5% of outcomes exceed it.
       {/if}
     </p>
   {/if}

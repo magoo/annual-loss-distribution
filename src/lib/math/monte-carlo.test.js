@@ -3,8 +3,8 @@ import { computeAnnualLoss } from './monte-carlo.js';
 import { interpolateCdf } from './test-utils.js';
 
 const validParams = {
-  frequencyParams: { p50: 5, p95: 20, p99: 80 },
-  costParams: { p50: 50000, p95: 500000, p99: 2000000 },
+  frequencyParams: { p50: 5, p95: 20 },
+  costParams: { p50: 50000, p95: 500000 },
   frequencyDistType: 'lognormal',
   costDistType: 'lognormal',
 };
@@ -62,8 +62,8 @@ describe('computeAnnualLoss', () => {
 
     it('handles extreme but valid mixed distributions without NaN/Infinity', () => {
       const result = computeAnnualLoss({
-        frequencyParams: { p50: 0.01, p95: 2, p99: 20 },
-        costParams: { p50: 1000, p95: 2_000_000, p99: 50_000_000 },
+        frequencyParams: { p50: 0.01, p95: 2 },
+        costParams: { p50: 1000, p95: 2_000_000 },
         frequencyDistType: 'pareto',
         costDistType: 'lognormal',
       });
@@ -114,7 +114,7 @@ describe('computeAnnualLoss', () => {
   describe('mixed distribution types', () => {
     it('lognormal frequency × pert cost', () => {
       const result = computeAnnualLoss({
-        frequencyParams: { p50: 5, p95: 20, p99: 80 },
+        frequencyParams: { p50: 5, p95: 20 },
         costParams: { min: 1000, mode: 50000, max: 500000 },
         frequencyDistType: 'lognormal',
         costDistType: 'pert',
@@ -128,7 +128,7 @@ describe('computeAnnualLoss', () => {
     it('pert frequency × lognormal cost', () => {
       const result = computeAnnualLoss({
         frequencyParams: { min: 0, mode: 5, max: 20 },
-        costParams: { p50: 50000, p95: 500000, p99: 2000000 },
+        costParams: { p50: 50000, p95: 500000 },
         frequencyDistType: 'pert',
         costDistType: 'lognormal',
       });
@@ -138,8 +138,8 @@ describe('computeAnnualLoss', () => {
 
     it('pareto frequency × lognormal cost', () => {
       const result = computeAnnualLoss({
-        frequencyParams: { p50: 5, p95: 20, p99: 80 },
-        costParams: { p50: 50000, p95: 500000, p99: 2000000 },
+        frequencyParams: { p50: 5, p95: 20 },
+        costParams: { p50: 50000, p95: 500000 },
         frequencyDistType: 'pareto',
         costDistType: 'lognormal',
       });
@@ -170,21 +170,14 @@ describe('computeAnnualLoss', () => {
 
     it('returns null when frequency p50 <= 0', () => {
       expect(computeAnnualLoss({
-        frequencyParams: { p50: 0, p95: 10, p99: 50 },
+        frequencyParams: { p50: 0, p95: 10 },
         costParams: validParams.costParams,
       })).toBeNull();
     });
 
     it('returns null when frequency p95 <= p50', () => {
       expect(computeAnnualLoss({
-        frequencyParams: { p50: 10, p95: 10, p99: 50 },
-        costParams: validParams.costParams,
-      })).toBeNull();
-    });
-
-    it('returns null when frequency p99 <= p95', () => {
-      expect(computeAnnualLoss({
-        frequencyParams: { p50: 5, p95: 20, p99: 20 },
+        frequencyParams: { p50: 10, p95: 10 },
         costParams: validParams.costParams,
       })).toBeNull();
     });
@@ -192,14 +185,14 @@ describe('computeAnnualLoss', () => {
     it('returns null when cost p50 <= 0', () => {
       expect(computeAnnualLoss({
         frequencyParams: validParams.frequencyParams,
-        costParams: { p50: 0, p95: 500000, p99: 2000000 },
+        costParams: { p50: 0, p95: 500000 },
       })).toBeNull();
     });
 
     it('returns null when cost p95 < p50', () => {
       expect(computeAnnualLoss({
         frequencyParams: validParams.frequencyParams,
-        costParams: { p50: 500000, p95: 100, p99: 2000000 },
+        costParams: { p50: 500000, p95: 100 },
       })).toBeNull();
     });
 
@@ -232,10 +225,9 @@ describe('computeAnnualLoss', () => {
         integral += 0.5 * (result.yPdf[i] + result.yPdf[i + 1]) * dx;
       }
 
-      // Generous bounds: we only cover P0.1-P99 so some mass is outside
+      // Generous bounds: the returned chart domain excludes some tail mass.
       expect(integral).toBeGreaterThan(0.8);
       expect(integral).toBeLessThan(1.2);
     });
   });
 });
-

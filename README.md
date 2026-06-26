@@ -40,7 +40,7 @@ Everything runs client-side. No backend required.
 
 Use this when you want a compact model from a few key estimates.
 
-- **Lognormal** and **Pareto** use percentile-style inputs (P50/P95/P99)
+- **Lognormal** and **Pareto** use percentile-style inputs (P50/P95)
 - **PERT** uses min / most likely / max
 - Inputs are section-aware (Frequency vs Cost)
 
@@ -50,10 +50,11 @@ Use this when you want to model specific threat scenarios (for example, ransomwa
 
 - Add/edit/remove scenarios
 - Choose per-scenario frequency method and cost distribution
+- Use the same named scenarios on the Frequency and Cost tabs
 - Optional mini previews per scenario
 - Scenario simulations run as a **10,000-round Monte Carlo** process
 
-Scenario mode can be used for Frequency, Cost, or both (hybrid modeling is supported).
+Scenario mode is global: the Frequency and Cost tabs share the same scenario list and scenario names, while each scenario keeps separate frequency and cost inputs.
 
 ### Panel Mode
 

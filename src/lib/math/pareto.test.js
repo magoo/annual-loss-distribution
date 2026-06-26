@@ -1,19 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { fitParetoOLS, computePareto } from './pareto.js';
+import { fitPareto, computePareto } from './pareto.js';
 import { interpolateCdf } from './test-utils.js';
 
-describe('fitParetoOLS', () => {
-  it('recovers scale and shape from exact Pareto quantiles', () => {
-    // Known Pareto parameters
+describe('fitPareto', () => {
+  it('recovers scale and shape from exact P50/P95 Pareto quantiles', () => {
     const scale = 10;
     const shape = 2;
 
-    // Exact Pareto quantiles: Q(p) = scale * (1/(1-p))^(1/shape)
     const p50 = scale * Math.pow(1 / (1 - 0.5), 1 / shape);
     const p95 = scale * Math.pow(1 / (1 - 0.95), 1 / shape);
-    const p99 = scale * Math.pow(1 / (1 - 0.99), 1 / shape);
 
-    const result = fitParetoOLS(p50, p95, p99);
+    const result = fitPareto(p50, p95);
 
     expect(result.scale).toBeCloseTo(scale, 4);
     expect(result.shape).toBeCloseTo(shape, 4);
@@ -29,9 +26,8 @@ describe('fitParetoOLS', () => {
     for (const { scale, shape } of cases) {
       const p50 = scale * Math.pow(2, 1 / shape);
       const p95 = scale * Math.pow(20, 1 / shape);
-      const p99 = scale * Math.pow(100, 1 / shape);
 
-      const result = fitParetoOLS(p50, p95, p99);
+      const result = fitPareto(p50, p95);
 
       expect(result.scale).toBeCloseTo(scale, 3);
       expect(result.shape).toBeCloseTo(shape, 3);
@@ -42,7 +38,7 @@ describe('fitParetoOLS', () => {
 describe('computePareto', () => {
   describe('CDF properties', () => {
     it('CDF is monotonically non-decreasing and within [0, 1]', () => {
-      const result = computePareto({ p50: 50, p95: 200, p99: 500 });
+      const result = computePareto({ p50: 50, p95: 200 });
       expect(result).not.toBeNull();
 
       for (let i = 0; i < result.yCdf.length; i++) {
@@ -58,7 +54,7 @@ describe('computePareto', () => {
 
   describe('PDF properties', () => {
     it('all PDF values are non-negative', () => {
-      const result = computePareto({ p50: 50, p95: 200, p99: 500 });
+      const result = computePareto({ p50: 50, p95: 200 });
       expect(result).not.toBeNull();
 
       for (const y of result.yPdf) {
@@ -69,7 +65,7 @@ describe('computePareto', () => {
 
   describe('numerical stability', () => {
     it('returns finite arrays for extreme heavy-tail quantiles', () => {
-      const result = computePareto({ p50: 1, p95: 10_000, p99: 1_000_000 });
+      const result = computePareto({ p50: 1, p95: 10_000 });
       expect(result).not.toBeNull();
       expect(result.x.length).toBe(500);
       expect(result.yPdf.length).toBe(result.x.length);
@@ -88,68 +84,54 @@ describe('computePareto', () => {
 
   describe('CDF domain starts at scale', () => {
     it('first x value equals the fitted scale parameter', () => {
-      const result = computePareto({ p50: 50, p95: 200, p99: 500 });
+      const result = computePareto({ p50: 50, p95: 200 });
       expect(result).not.toBeNull();
 
-      const { scale } = fitParetoOLS(50, 200, 500);
+      const { scale } = fitPareto(50, 200);
       expect(result.x[0]).toBeCloseTo(scale, 5);
     });
   });
 
   describe('heavy tail', () => {
-    it('P99 value is significantly larger than P50', () => {
-      const result = computePareto({ p50: 50, p95: 200, p99: 500 });
+    it('x range extends beyond P95', () => {
+      const result = computePareto({ p50: 50, p95: 200 });
       expect(result).not.toBeNull();
 
-      // The x range should extend well beyond p50
       const maxX = result.x[result.x.length - 1];
-      expect(maxX).toBeGreaterThan(500);
+      expect(maxX).toBeGreaterThan(200);
     });
   });
 
-  describe('P50/P95/P99 fidelity', () => {
+  describe('P50/P95 fidelity', () => {
     const cases = [
-      { p50: 50, p95: 200, p99: 500, label: 'typical' },
-      { p50: 1, p95: 100, p99: 10000, label: 'heavy tail' },
-      { p50: 10000, p95: 50000, p99: 200000, label: 'large scale' },
+      { p50: 50, p95: 200, label: 'typical' },
+      { p50: 1, p95: 100, label: 'heavy tail' },
+      { p50: 10000, p95: 50000, label: 'large scale' },
     ];
 
-    for (const { p50, p95, p99, label } of cases) {
-      it(`CDF ≈ 0.50 at p50 and ≈ 0.95 at p95 (${label})`, () => {
-        const result = computePareto({ p50, p95, p99 });
+    for (const { p50, p95, label } of cases) {
+      it(`CDF is calibrated at P50 and P95 (${label})`, () => {
+        const result = computePareto({ p50, p95 });
         expect(result).not.toBeNull();
 
         const cdfAtP50 = interpolateCdf(result.x, result.yCdf, p50);
         const cdfAtP95 = interpolateCdf(result.x, result.yCdf, p95);
 
-        expect(cdfAtP50).toBeCloseTo(0.5, 1);
-        expect(cdfAtP95).toBeCloseTo(0.95, 1);
+        expect(cdfAtP50).toBeCloseTo(0.5, 2);
+        expect(cdfAtP95).toBeCloseTo(0.95, 2);
       });
     }
-
-    it('CDF ≈ 0.99 at p99', () => {
-      const result = computePareto({ p50: 50, p95: 200, p99: 500 });
-      expect(result).not.toBeNull();
-
-      const cdfAtP99 = interpolateCdf(result.x, result.yCdf, 500);
-      expect(cdfAtP99).toBeCloseTo(0.99, 1);
-    });
   });
 
   describe('invalid inputs', () => {
     it('returns null when p50 <= 0', () => {
-      expect(computePareto({ p50: 0, p95: 10, p99: 50 })).toBeNull();
-      expect(computePareto({ p50: -1, p95: 10, p99: 50 })).toBeNull();
+      expect(computePareto({ p50: 0, p95: 10 })).toBeNull();
+      expect(computePareto({ p50: -1, p95: 10 })).toBeNull();
     });
 
     it('returns null when p95 <= p50', () => {
-      expect(computePareto({ p50: 50, p95: 50, p99: 200 })).toBeNull();
-      expect(computePareto({ p50: 50, p95: 30, p99: 200 })).toBeNull();
-    });
-
-    it('returns null when p99 <= p95', () => {
-      expect(computePareto({ p50: 50, p95: 200, p99: 200 })).toBeNull();
-      expect(computePareto({ p50: 50, p95: 200, p99: 100 })).toBeNull();
+      expect(computePareto({ p50: 50, p95: 50 })).toBeNull();
+      expect(computePareto({ p50: 50, p95: 30 })).toBeNull();
     });
   });
 });

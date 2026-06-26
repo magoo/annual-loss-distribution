@@ -47,8 +47,8 @@
         costParams={appState.effectiveCostParams}
         frequencyDistType={appState.frequencyDistType}
         costDistType={appState.costDistType}
-        frequencyScenarioMode={appState.frequencyScenarioMode}
-        costScenarioMode={appState.costScenarioMode}
+        frequencyScenarioMode={appState.scenarioMode}
+        costScenarioMode={appState.scenarioMode}
         frequencyPanelActive={appState.frequencyPanelActive}
         costPanelActive={appState.costPanelActive}
         frequencyPanelists={appState.frequencyPanelists}

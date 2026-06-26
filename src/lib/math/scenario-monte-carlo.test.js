@@ -8,7 +8,7 @@ const oddsScenario = [
     frequencyMethod: 'odds',
     frequencyParams: { odds: 2 },
     costDistType: 'lognormal',
-    costParams: { p50: 10_000, p95: 50_000, p99: 150_000 },
+    costParams: { p50: 10_000, p95: 50_000 },
   },
 ];
 
@@ -19,7 +19,7 @@ const mixedCostScenarios = [
     frequencyMethod: 'odds',
     frequencyParams: { odds: 3 },
     costDistType: 'lognormal',
-    costParams: { p50: 10_000, p95: 50_000, p99: 150_000 },
+    costParams: { p50: 10_000, p95: 50_000 },
   },
   {
     id: 2,
@@ -84,7 +84,7 @@ describe('computeScenarioMC', () => {
       frequencyScenarioMode: false,
       costScenarioMode: true,
       frequencyDistType: 'lognormal',
-      frequencyParams: { p50: 2, p95: 8, p99: 20 },
+      frequencyParams: { p50: 2, p95: 8 },
     });
 
     expect(result).not.toBeNull();
@@ -126,6 +126,25 @@ describe('computeScenarioMC', () => {
     expect(result.samples.length).toBe(10_000);
   });
 
+  it('ignores cost params when active section is frequency and global scenario mode is on', () => {
+    const result = computeScenarioMC([
+      {
+        id: 1,
+        name: 'Frequency only chart',
+        frequencyMethod: 'odds',
+        frequencyParams: { odds: 3 },
+        costDistType: 'lognormal',
+        costParams: { p50: 10_000, p95: 1_000 },
+      },
+    ], 'frequency', {
+      frequencyScenarioMode: true,
+      costScenarioMode: true,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result.samples.length).toBe(10_000);
+  });
+
   it('returns null when a scenario has invalid odds parameters', () => {
     const invalid = [
       {
@@ -134,7 +153,7 @@ describe('computeScenarioMC', () => {
         frequencyMethod: 'odds',
         frequencyParams: { odds: 0 },
         costDistType: 'lognormal',
-        costParams: { p50: 1_000, p95: 10_000, p99: 50_000 },
+        costParams: { p50: 1_000, p95: 10_000 },
       },
     ];
 
@@ -146,7 +165,7 @@ describe('computeScenarioMC', () => {
       frequencyScenarioMode: false,
       costScenarioMode: true,
       frequencyDistType: 'lognormal',
-      frequencyParams: { p50: 10, p95: 10, p99: 20 },
+      frequencyParams: { p50: 10, p95: 10 },
     });
 
     const invalidCost = computeScenarioMC(oddsScenario, 'loss', {

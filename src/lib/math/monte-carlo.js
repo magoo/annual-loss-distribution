@@ -1,6 +1,6 @@
 import { jStat } from 'jstat';
-import { fitLognormalOLS } from './lognormal.js';
-import { fitParetoOLS } from './pareto.js';
+import { fitLognormal } from './lognormal.js';
+import { fitPareto } from './pareto.js';
 import { fitPert } from './pert.js';
 import { createRng } from './rng.js';
 
@@ -21,7 +21,7 @@ function sampleDistribution(distType, params, n, rng) {
 
   switch (distType) {
     case 'lognormal': {
-      const { mu, sigma } = fitLognormalOLS(params.p50, params.p95, params.p99);
+      const { mu, sigma } = fitLognormal(params.p50, params.p95);
       if (sigma <= 0 || !isFinite(mu) || !isFinite(sigma)) return null;
       for (let i = 0; i < n; i++) {
         samples[i] = jStat.lognormal.inv(rng(), mu, sigma);
@@ -38,7 +38,7 @@ function sampleDistribution(distType, params, n, rng) {
       break;
     }
     case 'pareto': {
-      const { scale, shape } = fitParetoOLS(params.p50, params.p95, params.p99);
+      const { scale, shape } = fitPareto(params.p50, params.p95);
       if (scale <= 0 || shape <= 0 || !isFinite(scale) || !isFinite(shape)) return null;
       for (let i = 0; i < n; i++) {
         samples[i] = jStat.pareto.inv(rng(), scale, shape);
@@ -59,7 +59,7 @@ function validateDistParams(distType, params) {
   switch (distType) {
     case 'lognormal':
     case 'pareto':
-      return params.p50 > 0 && params.p95 > params.p50 && params.p99 > params.p95;
+      return params.p50 > 0 && params.p95 > params.p50;
     case 'pert':
       return params.min >= 0 && params.mode > params.min && params.max > params.mode;
     default:
@@ -159,7 +159,7 @@ export function computeAnnualLoss(allParams) {
 
   lossSamples.sort();
 
-  // Trim to P0.1 - P99 range
+  // Trim to the central plotting range; some tail mass remains outside the chart.
   const lowerIdx = Math.floor(NUM_SAMPLES * 0.001);
   const upperIdx = Math.floor(NUM_SAMPLES * 0.99);
   const lower = lossSamples[lowerIdx];

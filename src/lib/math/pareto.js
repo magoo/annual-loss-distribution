@@ -3,45 +3,33 @@ import { jStat } from 'jstat';
 const NUM_POINTS = 500;
 
 /**
- * OLS fit of Pareto parameters from three quantiles (P50, P95, P99).
+ * Fit Pareto parameters exactly from P50 and P95.
  * Pareto quantile: Q(p) = scale * (1/(1-p))^(1/shape)
- * Taking logs: ln(Q(p)) = ln(scale) + (1/shape) * ln(1/(1-p))
- * OLS regression of ys on xs gives intercept=ln(scale), slope=1/shape.
  */
-export function fitParetoOLS(p50, p95, p99) {
-  const xs = [Math.log(1 / (1 - 0.5)), Math.log(1 / (1 - 0.95)), Math.log(1 / (1 - 0.99))];
-  // xs = [ln(2), ln(20), ln(100)]
-  const ys = [Math.log(p50), Math.log(p95), Math.log(p99)];
-  const n = 3;
-  const sumX = xs[0] + xs[1] + xs[2];
-  const sumY = ys[0] + ys[1] + ys[2];
-  const sumXY = xs[0] * ys[0] + xs[1] * ys[1] + xs[2] * ys[2];
-  const sumX2 = xs[0] * xs[0] + xs[1] * xs[1] + xs[2] * xs[2];
-  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-  const intercept = (sumY - slope * sumX) / n;
-  const scale = Math.exp(intercept);
-  const shape = 1 / slope;
+export function fitPareto(p50, p95) {
+  const shape = Math.log(10) / Math.log(p95 / p50);
+  const scale = p50 / Math.pow(2, 1 / shape);
   return { scale, shape };
 }
 
 /**
  * Compute Pareto distribution PDF and CDF values.
- * Fits scale and shape from P50, P95, P99 via OLS.
- * @param {{ p50: number, p95: number, p99: number }} params
+ * Fits scale and shape from P50 and P95.
+ * @param {{ p50: number, p95: number }} params
  * @returns {{ x: number[], yPdf: number[], yCdf: number[] } | null}
  */
 export function computePareto(params) {
-  const { p50, p95, p99 } = params;
+  const { p50, p95 } = params;
 
-  if (p50 <= 0 || p95 <= p50 || p99 <= p95) return null;
+  if (p50 <= 0 || p95 <= p50) return null;
 
-  const { scale, shape } = fitParetoOLS(p50, p95, p99);
+  const { scale, shape } = fitPareto(p50, p95);
 
   if (scale <= 0 || shape <= 0 || !isFinite(scale) || !isFinite(shape)) return null;
 
-  // Generate log-spaced x-values from ~P0.1 to ~P99.9
+  // Generate log-spaced x-values across nearly the full positive support.
   const lower = scale; // Pareto support starts at scale
-  const upper = scale * Math.pow(1000, 1 / shape); // P99.9
+  const upper = scale * Math.pow(1000, 1 / shape);
   if (lower <= 0 || upper <= lower || !isFinite(upper)) return null;
 
   const logLower = Math.log(lower);

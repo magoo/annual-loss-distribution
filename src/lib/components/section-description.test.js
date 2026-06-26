@@ -7,7 +7,6 @@ import { formatCompact } from '../math/formatting.js';
 const baseFrequencyParams = {
   p50: 6,
   p95: 18,
-  p99: 30,
   min: 2,
   mode: 8,
   max: 24,
@@ -16,7 +15,6 @@ const baseFrequencyParams = {
 const baseCostParams = {
   p50: 120000,
   p95: 700000,
-  p99: 1500000,
   min: 25000,
   mode: 150000,
   max: 900000,
@@ -93,7 +91,7 @@ describe('getSectionDescription', () => {
     const frequencySection = model.sections.find((section) => section.title === 'Frequency Inputs');
     expect(frequencySection?.bullets).toContain('Distribution: Lognormal');
     expect(frequencySection?.bullets).toContain('P50 (typical): 6');
-    expect(frequencySection?.bullets).toContain('P99 (extreme): 30');
+    expect(frequencySection?.bullets).toContain('P95 (high): 18');
 
     const costSection = model.sections.find((section) => section.title === 'Cost Inputs');
     expect(costSection?.bullets).toContain('Distribution: Pareto');
@@ -120,14 +118,14 @@ describe('getSectionDescription', () => {
           frequencyMethod: 'odds',
           frequencyParams: { odds: 4 },
           costDistType: 'lognormal',
-          costParams: { p50: 100000, p95: 1000000, p99: 5000000 },
+          costParams: { p50: 100000, p95: 1000000 },
         },
         {
           name: 'Vendor outage',
           frequencyMethod: 'odds',
           frequencyParams: { odds: 6 },
           costDistType: 'lognormal',
-          costParams: { p50: 50000, p95: 500000, p99: 2000000 },
+          costParams: { p50: 50000, p95: 500000 },
         },
       ],
     });

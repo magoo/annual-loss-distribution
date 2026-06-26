@@ -88,7 +88,7 @@ describe('computeDistribution', () => {
   it('dispatches lognormal correctly', () => {
     const result = computeDistribution(
       'frequency',
-      { p50: 1, p95: 10, p99: 50 },
+      { p50: 1, p95: 10 },
       null,
       'lognormal'
     );
@@ -112,7 +112,7 @@ describe('computeDistribution', () => {
   it('dispatches pareto correctly', () => {
     const result = computeDistribution(
       'frequency',
-      { p50: 5, p95: 20, p99: 80 },
+      { p50: 5, p95: 20 },
       null,
       'pareto'
     );
@@ -122,8 +122,8 @@ describe('computeDistribution', () => {
 
   it('dispatches loss section to Monte Carlo', () => {
     const allParams = {
-      frequencyParams: { p50: 5, p95: 20, p99: 80 },
-      costParams: { p50: 50000, p95: 500000, p99: 2000000 },
+      frequencyParams: { p50: 5, p95: 20 },
+      costParams: { p50: 50000, p95: 500000 },
       frequencyDistType: 'lognormal',
       costDistType: 'lognormal',
     };
@@ -135,7 +135,7 @@ describe('computeDistribution', () => {
   it('defaults to lognormal for unknown dist type', () => {
     const result = computeDistribution(
       'frequency',
-      { p50: 1, p95: 10, p99: 50 },
+      { p50: 1, p95: 10 },
       null,
       'unknown'
     );
@@ -145,8 +145,8 @@ describe('computeDistribution', () => {
 
   it('returns null for loss section when required allParams are invalid', () => {
     const result = computeDistribution('loss', null, {
-      frequencyParams: { p50: 0, p95: 10, p99: 50 },
-      costParams: { p50: 1000, p95: 10000, p99: 50000 },
+      frequencyParams: { p50: 0, p95: 10 },
+      costParams: { p50: 1000, p95: 10000 },
       frequencyDistType: 'lognormal',
       costDistType: 'lognormal',
     }, 'lognormal');
@@ -155,7 +155,7 @@ describe('computeDistribution', () => {
 
   it('ignores distType argument for loss section and uses allParams dist types', () => {
     const allParams = {
-      frequencyParams: { p50: 5, p95: 20, p99: 80 },
+      frequencyParams: { p50: 5, p95: 20 },
       costParams: { min: 1000, mode: 50000, max: 500000 },
       frequencyDistType: 'lognormal',
       costDistType: 'pert',

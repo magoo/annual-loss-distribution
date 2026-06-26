@@ -16,9 +16,8 @@ let frequencyPanelists = $state([]);
 let costPanelists = $state([]);
 let nextPanelistId = $state(1);
 
-// --- Scenario mode state (per-section) ---
-let frequencyScenarioMode = $state(false);
-let costScenarioMode = $state(false);
+// --- Scenario mode state (global) ---
+let scenarioModeActive = $state(false);
 let scenarios = $state([]);
 let nextScenarioId = $state(1);
 
@@ -27,13 +26,6 @@ const frequencyPanelActive = $derived(frequencyPanelists.length >= 2);
 const costPanelActive = $derived(costPanelists.length >= 2);
 const activePanelActive = $derived(
   activeSection === 'frequency' ? frequencyPanelActive : costPanelActive
-);
-
-// Per-tab derived scenario mode
-const activeScenarioMode = $derived(
-  activeSection === 'frequency' ? frequencyScenarioMode
-  : activeSection === 'cost' ? costScenarioMode
-  : (frequencyScenarioMode || costScenarioMode)
 );
 
 // --- Derived: active dist type and config ---
@@ -139,30 +131,10 @@ const isValid = $derived.by(() => {
 });
 
 const chartData = $derived.by(() => {
-  const freqScen = frequencyScenarioMode && scenarios.length > 0;
-  const costScen = costScenarioMode && scenarios.length > 0;
-
-  if (activeSection === 'frequency' && freqScen) {
-    return computeScenarioMC(scenarios, 'frequency', {
-      frequencyScenarioMode: true,
-      costScenarioMode: costScen,
-    });
-  }
-  if (activeSection === 'cost' && costScen) {
-    // Cost tab needs frequency to generate incident counts for cost sampling
-    return computeScenarioMC(scenarios, 'cost', {
+  if (scenarioModeActive && scenarios.length > 0) {
+    return computeScenarioMC(scenarios, activeSection, {
       frequencyScenarioMode: true,
       costScenarioMode: true,
-    });
-  }
-  if (activeSection === 'loss' && (freqScen || costScen)) {
-    return computeScenarioMC(scenarios, 'loss', {
-      frequencyScenarioMode: freqScen,
-      costScenarioMode: costScen,
-      frequencyParams: effectiveFrequencyParams,
-      costParams: effectiveCostParams,
-      frequencyDistType,
-      costDistType,
     });
   }
 
@@ -258,37 +230,22 @@ function seedDefaultScenarios() {
 }
 
 function enableScenarioModeForActiveSection() {
-  if (activeSection === 'frequency') {
-    if (frequencyScenarioMode) return;
-    frequencyScenarioMode = true;
-    frequencyPanelists = [];
-    seedDefaultScenarios();
-  } else if (activeSection === 'cost') {
-    if (costScenarioMode) return;
-    costScenarioMode = true;
-    costPanelists = [];
-    seedDefaultScenarios();
-  }
+  if (activeSection !== 'frequency' && activeSection !== 'cost') return;
+  if (scenarioModeActive) return;
+  scenarioModeActive = true;
+  frequencyPanelists = [];
+  costPanelists = [];
+  seedDefaultScenarios();
 }
 
 function disableScenarioModeForActiveSection() {
-  if (activeSection === 'frequency') {
-    if (!frequencyScenarioMode) return;
-    frequencyScenarioMode = false;
-    if (!costScenarioMode) scenarios = [];
-  } else if (activeSection === 'cost') {
-    if (!costScenarioMode) return;
-    costScenarioMode = false;
-    if (!frequencyScenarioMode) scenarios = [];
-  }
+  if (!scenarioModeActive) return;
+  scenarioModeActive = false;
+  scenarios = [];
 }
 
 function toggleScenarioMode() {
-  const sectionScenarioMode = activeSection === 'frequency' ? frequencyScenarioMode
-    : activeSection === 'cost' ? costScenarioMode
-    : false;
-
-  if (sectionScenarioMode) {
+  if (scenarioModeActive) {
     disableScenarioModeForActiveSection();
   } else {
     enableScenarioModeForActiveSection();
@@ -309,8 +266,7 @@ function addScenario() {
 function removeScenario(id) {
   scenarios = scenarios.filter((s) => s.id !== id);
   if (scenarios.length === 0) {
-    frequencyScenarioMode = false;
-    costScenarioMode = false;
+    scenarioModeActive = false;
   }
 }
 
@@ -347,13 +303,10 @@ function setScenarioCostParam(id, key, value) {
 }
 
 function addPanelist() {
-  // Mutual exclusivity: adding panelist disables scenario mode for current section
-  if (activeSection === 'frequency' && frequencyScenarioMode) {
-    frequencyScenarioMode = false;
-    if (!costScenarioMode) scenarios = [];
-  } else if (activeSection === 'cost' && costScenarioMode) {
-    costScenarioMode = false;
-    if (!frequencyScenarioMode) scenarios = [];
+  // Mutual exclusivity: panel mode uses section-level panelists, while scenario mode is global.
+  if (scenarioModeActive) {
+    scenarioModeActive = false;
+    scenarios = [];
   }
 
   const distType = activeSection === 'frequency' ? frequencyDistType : costDistType;
@@ -449,9 +402,9 @@ export function getState() {
     get costDistType() { return costDistType; },
     get activeDistType() { return activeDistType; },
     get activeDistConfig() { return activeDistConfig; },
-    get scenarioMode() { return activeScenarioMode; },
-    get frequencyScenarioMode() { return frequencyScenarioMode; },
-    get costScenarioMode() { return costScenarioMode; },
+    get scenarioMode() { return scenarioModeActive; },
+    get frequencyScenarioMode() { return scenarioModeActive; },
+    get costScenarioMode() { return scenarioModeActive; },
     get scenarios() { return scenarios; },
     setActiveSection,
     setView,

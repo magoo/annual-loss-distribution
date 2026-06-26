@@ -1,6 +1,6 @@
 import { jStat } from 'jstat';
-import { fitLognormalOLS } from './lognormal.js';
-import { fitParetoOLS } from './pareto.js';
+import { fitLognormal } from './lognormal.js';
+import { fitPareto } from './pareto.js';
 import { fitPert } from './pert.js';
 import { createRng } from './rng.js';
 
@@ -15,8 +15,8 @@ const NUM_PLOT_POINTS = 500;
 function buildSampler(distType, params) {
   switch (distType) {
     case 'lognormal': {
-      if (params.p50 <= 0 || params.p95 <= params.p50 || params.p99 <= params.p95) return null;
-      const { mu, sigma } = fitLognormalOLS(params.p50, params.p95, params.p99);
+      if (params.p50 <= 0 || params.p95 <= params.p50) return null;
+      const { mu, sigma } = fitLognormal(params.p50, params.p95);
       if (sigma <= 0 || !isFinite(mu) || !isFinite(sigma)) return null;
       return (rng) => jStat.lognormal.inv(rng(), mu, sigma);
     }
@@ -28,8 +28,8 @@ function buildSampler(distType, params) {
       return (rng) => min + range * jStat.beta.inv(rng(), alpha, beta);
     }
     case 'pareto': {
-      if (params.p50 <= 0 || params.p95 <= params.p50 || params.p99 <= params.p95) return null;
-      const { scale, shape } = fitParetoOLS(params.p50, params.p95, params.p99);
+      if (params.p50 <= 0 || params.p95 <= params.p50) return null;
+      const { scale, shape } = fitPareto(params.p50, params.p95);
       if (scale <= 0 || shape <= 0 || !isFinite(scale) || !isFinite(shape)) return null;
       return (rng) => jStat.pareto.inv(rng(), scale, shape);
     }
@@ -111,6 +111,7 @@ export function computeScenarioMC(scenarios, activeSection, options = {}) {
   } = options;
 
   const rng = createRng(DEFAULT_SEED);
+  const needCost = activeSection !== 'frequency';
 
   // Pre-build scenario samplers
   const scenarioSamplers = scenarios.map((s) => {
@@ -128,7 +129,7 @@ export function computeScenarioMC(scenarios, activeSection, options = {}) {
     }
 
     let costSampler = null;
-    if (costScenarioMode) {
+    if (costScenarioMode && needCost) {
       costSampler = buildSampler(s.costDistType, s.costParams);
       if (!costSampler) return null;
     }
@@ -147,13 +148,10 @@ export function computeScenarioMC(scenarios, activeSection, options = {}) {
   }
 
   let singleCostSampler = null;
-  if (!costScenarioMode && costParams) {
+  if (needCost && !costScenarioMode && costParams) {
     singleCostSampler = buildSampler(costDistType, costParams);
     if (!singleCostSampler) return null;
   }
-
-  // Determine if we need cost sampling (not needed when only viewing frequency)
-  const needCost = activeSection !== 'frequency';
 
   const frequencySamples = new Float64Array(NUM_ROUNDS);
   const lossSamples = needCost ? new Float64Array(NUM_ROUNDS) : null;

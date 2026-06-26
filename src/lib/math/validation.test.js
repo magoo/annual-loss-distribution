@@ -3,88 +3,68 @@ import { validateQuantiles, validatePert, validateOdds, validate } from './valid
 
 describe('validateQuantiles', () => {
   it('returns empty errors for valid params', () => {
-    const errors = validateQuantiles({ p50: 10, p95: 100, p99: 500 });
+    const errors = validateQuantiles({ p50: 10, p95: 100 });
+    expect(errors).toEqual({});
+  });
+
+  it('ignores extra fields', () => {
+    const errors = validateQuantiles({ p50: 10, p95: 100, extra: 50 });
     expect(errors).toEqual({});
   });
 
   describe('required fields', () => {
     it('missing p50 returns Required', () => {
-      const errors = validateQuantiles({ p95: 100, p99: 500 });
+      const errors = validateQuantiles({ p95: 100 });
       expect(errors.p50).toBe('Required');
     });
 
     it('NaN p50 returns Required', () => {
-      const errors = validateQuantiles({ p50: NaN, p95: 100, p99: 500 });
+      const errors = validateQuantiles({ p50: NaN, p95: 100 });
       expect(errors.p50).toBe('Required');
     });
 
     it('missing p95 returns Required', () => {
-      const errors = validateQuantiles({ p50: 10, p99: 500 });
+      const errors = validateQuantiles({ p50: 10 });
       expect(errors.p95).toBe('Required');
     });
 
     it('NaN p95 returns Required', () => {
-      const errors = validateQuantiles({ p50: 10, p95: NaN, p99: 500 });
+      const errors = validateQuantiles({ p50: 10, p95: NaN });
       expect(errors.p95).toBe('Required');
     });
 
-    it('missing p99 returns Required', () => {
-      const errors = validateQuantiles({ p50: 10, p95: 100 });
-      expect(errors.p99).toBe('Required');
-    });
-
-    it('NaN p99 returns Required', () => {
-      const errors = validateQuantiles({ p50: 10, p95: 100, p99: NaN });
-      expect(errors.p99).toBe('Required');
-    });
-
     it('Infinity p50 returns finite-number error', () => {
-      const errors = validateQuantiles({ p50: Infinity, p95: 100, p99: 500 });
+      const errors = validateQuantiles({ p50: Infinity, p95: 100 });
       expect(errors.p50).toBe('Must be a finite number');
     });
 
     it('-Infinity p95 returns finite-number error', () => {
-      const errors = validateQuantiles({ p50: 10, p95: -Infinity, p99: 500 });
+      const errors = validateQuantiles({ p50: 10, p95: -Infinity });
       expect(errors.p95).toBe('Must be a finite number');
     });
   });
 
   describe('negative values', () => {
     it('negative p50 returns error', () => {
-      const errors = validateQuantiles({ p50: -1, p95: 100, p99: 500 });
+      const errors = validateQuantiles({ p50: -1, p95: 100 });
       expect(errors.p50).toBeTruthy();
     });
 
     it('negative p95 returns error', () => {
-      const errors = validateQuantiles({ p50: 10, p95: -5, p99: 500 });
+      const errors = validateQuantiles({ p50: 10, p95: -5 });
       expect(errors.p95).toBeTruthy();
-    });
-
-    it('negative p99 returns error', () => {
-      const errors = validateQuantiles({ p50: 10, p95: 100, p99: -1 });
-      expect(errors.p99).toBeTruthy();
     });
   });
 
   describe('ordering constraints', () => {
     it('p95 <= p50 returns error on p95', () => {
-      const errors = validateQuantiles({ p50: 100, p95: 50, p99: 500 });
+      const errors = validateQuantiles({ p50: 100, p95: 50 });
       expect(errors.p95).toBeTruthy();
     });
 
     it('p95 = p50 returns error on p95', () => {
-      const errors = validateQuantiles({ p50: 100, p95: 100, p99: 500 });
+      const errors = validateQuantiles({ p50: 100, p95: 100 });
       expect(errors.p95).toBeTruthy();
-    });
-
-    it('p99 <= p95 returns error on p99', () => {
-      const errors = validateQuantiles({ p50: 10, p95: 100, p99: 50 });
-      expect(errors.p99).toBeTruthy();
-    });
-
-    it('p99 = p95 returns error on p99', () => {
-      const errors = validateQuantiles({ p50: 10, p95: 100, p99: 100 });
-      expect(errors.p99).toBeTruthy();
     });
   });
 });
@@ -200,12 +180,12 @@ describe('validate dispatcher', () => {
   });
 
   it('distType=lognormal routes to quantile validation', () => {
-    const errors = validate('frequency', { p50: -1, p95: 100, p99: 500 }, 'lognormal');
+    const errors = validate('frequency', { p50: -1, p95: 100 }, 'lognormal');
     expect(errors.p50).toBeTruthy();
   });
 
   it('distType=pareto routes to quantile validation', () => {
-    const errors = validate('cost', { p50: 100, p95: 50, p99: 500 }, 'pareto');
+    const errors = validate('cost', { p50: 100, p95: 50 }, 'pareto');
     expect(errors.p95).toBeTruthy();
   });
 
@@ -215,7 +195,7 @@ describe('validate dispatcher', () => {
   });
 
   it('unknown distType defaults to quantile validation', () => {
-    const errors = validate('frequency', { p50: -1, p95: 100, p99: 500 }, 'unknown');
+    const errors = validate('frequency', { p50: -1, p95: 100 }, 'unknown');
     expect(errors.p50).toBeTruthy();
   });
 

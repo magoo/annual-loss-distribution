@@ -51,7 +51,6 @@ function percentileBullets(params, useDollars) {
   return [
     `P50 (typical): ${formatParamValue(params.p50, useDollars)}`,
     `P95 (high): ${formatParamValue(params.p95, useDollars)}`,
-    `P99 (extreme): ${formatParamValue(params.p99, useDollars)}`,
   ];
 }
 
