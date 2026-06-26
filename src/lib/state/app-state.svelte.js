@@ -11,6 +11,10 @@ let costDistType = $state('lognormal');
 let frequencyParams = $state({ ...DIST_CONFIGS.lognormal.frequency.defaults });
 let costParams = $state({ ...DIST_CONFIGS.lognormal.cost.defaults });
 
+// --- Workflow review state ---
+let frequencyReviewed = $state(false);
+let costReviewed = $state(false);
+
 // --- Panel mode state ---
 let frequencyPanelists = $state([]);
 let costPanelists = $state([]);
@@ -163,10 +167,58 @@ const panelAnalytics = $derived.by(() => {
 
 const useDollars = $derived(SECTIONS[activeSection].useDollars);
 
+function isSectionReviewed(section) {
+  if (section === 'frequency') return frequencyReviewed;
+  if (section === 'cost') return costReviewed;
+  return false;
+}
+
+function requiredSectionFor(section) {
+  if (!SECTION_TYPES.includes(section)) return null;
+  if (section === 'cost' && !frequencyReviewed) return 'frequency';
+  if (section === 'loss') {
+    if (!frequencyReviewed) return 'frequency';
+    if (!costReviewed) return 'cost';
+  }
+  return null;
+}
+
+function canVisitSection(section) {
+  return SECTION_TYPES.includes(section) && requiredSectionFor(section) === null;
+}
+
+const workflowSteps = $derived.by(() => SECTION_TYPES.map((type, index) => ({
+  type,
+  label: SECTIONS[type].label,
+  number: index + 1,
+  current: activeSection === type,
+  reviewed: isSectionReviewed(type),
+  locked: !canVisitSection(type),
+  available: canVisitSection(type),
+})));
+
 // --- Actions ---
 function setActiveSection(section) {
   if (!SECTION_TYPES.includes(section)) return;
+  if (!canVisitSection(section)) return;
   activeSection = section;
+}
+
+function forceActiveSection(section) {
+  if (!SECTION_TYPES.includes(section)) return;
+  activeSection = section;
+}
+
+function markActiveSectionReviewed() {
+  if (activeSection === 'frequency') {
+    frequencyReviewed = true;
+    activeSection = 'cost';
+  } else if (activeSection === 'cost') {
+    costReviewed = true;
+    if (canVisitSection('loss')) {
+      activeSection = 'loss';
+    }
+  }
 }
 
 function setView(v) {
@@ -406,7 +458,14 @@ export function getState() {
     get frequencyScenarioMode() { return scenarioModeActive; },
     get costScenarioMode() { return scenarioModeActive; },
     get scenarios() { return scenarios; },
+    get frequencyReviewed() { return frequencyReviewed; },
+    get costReviewed() { return costReviewed; },
+    get workflowSteps() { return workflowSteps; },
     setActiveSection,
+    forceActiveSection,
+    markActiveSectionReviewed,
+    requiredSectionFor,
+    canVisitSection,
     setView,
     setParam,
     setDistType,

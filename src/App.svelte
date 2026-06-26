@@ -17,10 +17,68 @@
 
   let confidenceLevel = $state(90);
   let focusPercentile = $state(99.5);
+  let workflowPrompt = $state(null);
+
+  const workflowPromptMessage = $derived.by(() => {
+    if (!workflowPrompt) return '';
+    if (workflowPrompt.target === 'cost') {
+      return 'Frequency should be reviewed first because it drives the incident count used by cost and annual loss.';
+    }
+    return 'Review Frequency and Cost before calculating annual loss.';
+  });
+
+  const reviewActionLabel = $derived(
+    appState.activeSection === 'frequency'
+      ? 'Review frequency and continue to Cost'
+      : 'Review cost and calculate annual loss'
+  );
 
   function handleDistributionTypeSelect(distType) {
     appState.disableScenarioModeForActiveSection();
     appState.setDistType(distType);
+  }
+
+  function handleSectionSelect(section) {
+    if (section === appState.activeSection) {
+      workflowPrompt = null;
+      return;
+    }
+
+    const required = appState.requiredSectionFor(section);
+    if (required) {
+      workflowPrompt = { target: section, required };
+      return;
+    }
+
+    workflowPrompt = null;
+    appState.setActiveSection(section);
+  }
+
+  function goToRequiredStep() {
+    if (!workflowPrompt) return;
+    appState.forceActiveSection(workflowPrompt.required);
+    workflowPrompt = null;
+  }
+
+  function openAnyway() {
+    if (!workflowPrompt) return;
+    appState.forceActiveSection(workflowPrompt.target);
+    workflowPrompt = null;
+  }
+
+  function handleWorkflowContinue() {
+    const reviewedSection = appState.activeSection;
+    appState.markActiveSectionReviewed();
+
+    if (reviewedSection === 'cost' && !appState.canVisitSection('loss')) {
+      workflowPrompt = {
+        target: 'loss',
+        required: appState.requiredSectionFor('loss'),
+      };
+      return;
+    }
+
+    workflowPrompt = null;
   }
 </script>
 
@@ -36,8 +94,19 @@
 
       <DistributionSelector
         selected={appState.activeSection}
-        onselect={appState.setActiveSection}
+        steps={appState.workflowSteps}
+        onselect={handleSectionSelect}
       />
+
+      {#if workflowPrompt}
+        <div class="workflow-prompt" role="status">
+          <p>{workflowPromptMessage}</p>
+          <div class="workflow-prompt-actions">
+            <button type="button" class="prompt-btn secondary" onclick={goToRequiredStep}>Go to required step</button>
+            <button type="button" class="prompt-btn" onclick={openAnyway}>Open anyway</button>
+          </div>
+        </div>
+      {/if}
 
       <SectionDescription
         activeSection={appState.activeSection}
@@ -150,6 +219,14 @@
         compact={appState.activeSection === 'loss'}
       />
     {/if}
+
+    {#if appState.activeSection !== 'loss'}
+      <div class="workflow-action">
+        <button type="button" class="workflow-continue-btn" onclick={handleWorkflowContinue}>
+          {reviewActionLabel}
+        </button>
+      </div>
+    {/if}
   </section>
 </main>
 
@@ -231,6 +308,67 @@
     margin: 0;
   }
 
+  .workflow-prompt {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3);
+    background: var(--color-primary-light);
+    border: 1px solid rgba(67, 97, 238, 0.22);
+    border-radius: var(--radius-md);
+  }
+
+  .workflow-prompt p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+  }
+
+  .workflow-prompt-actions {
+    display: flex;
+    flex: 0 0 auto;
+    gap: var(--spacing-2);
+  }
+
+  .prompt-btn,
+  .workflow-continue-btn {
+    min-height: 40px;
+    padding: var(--spacing-2) var(--spacing-4);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--color-surface);
+    background: var(--color-primary);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+  }
+
+  .prompt-btn:hover,
+  .workflow-continue-btn:hover {
+    background: var(--color-primary-hover);
+  }
+
+  .prompt-btn.secondary {
+    color: var(--color-primary);
+    background: var(--color-surface);
+    border: 1px solid rgba(67, 97, 238, 0.28);
+  }
+
+  .prompt-btn.secondary:hover {
+    background: var(--color-primary-light);
+  }
+
+  .workflow-action {
+    display: flex;
+    justify-content: flex-end;
+    padding: var(--spacing-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+  }
+
   .distribution-mode-card {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
@@ -254,6 +392,23 @@
     align-items: center;
     gap: var(--spacing-2);
     justify-content: flex-end;
+  }
+
+  @media (max-width: 640px) {
+    .workflow-prompt {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    .workflow-prompt-actions,
+    .workflow-action,
+    .workflow-continue-btn {
+      width: 100%;
+    }
+
+    .workflow-prompt-actions {
+      flex-direction: column;
+    }
   }
 
 </style>

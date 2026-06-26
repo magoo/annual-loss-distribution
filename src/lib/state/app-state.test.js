@@ -1,11 +1,72 @@
 import { describe, expect, it } from 'vitest';
 import { getState } from './app-state.svelte.js';
 
+describe('app workflow state', () => {
+  it('starts on frequency and gates later steps until prerequisites are reviewed', () => {
+    const state = getState();
+
+    expect(state.activeSection).toBe('frequency');
+    expect(state.frequencyReviewed).toBe(false);
+    expect(state.costReviewed).toBe(false);
+    expect(state.canVisitSection('frequency')).toBe(true);
+    expect(state.canVisitSection('cost')).toBe(false);
+    expect(state.canVisitSection('loss')).toBe(false);
+    expect(state.requiredSectionFor('cost')).toBe('frequency');
+    expect(state.requiredSectionFor('loss')).toBe('frequency');
+
+    state.setActiveSection('cost');
+    expect(state.activeSection).toBe('frequency');
+
+    state.setActiveSection('loss');
+    expect(state.activeSection).toBe('frequency');
+  });
+
+  it('allows intentional override without marking skipped steps reviewed', () => {
+    const state = getState();
+
+    state.forceActiveSection('loss');
+
+    expect(state.activeSection).toBe('loss');
+    expect(state.frequencyReviewed).toBe(false);
+    expect(state.costReviewed).toBe(false);
+
+    state.forceActiveSection('frequency');
+  });
+
+  it('marks frequency reviewed and advances to cost', () => {
+    const state = getState();
+
+    state.markActiveSectionReviewed();
+
+    expect(state.frequencyReviewed).toBe(true);
+    expect(state.costReviewed).toBe(false);
+    expect(state.activeSection).toBe('cost');
+    expect(state.canVisitSection('cost')).toBe(true);
+    expect(state.canVisitSection('loss')).toBe(false);
+    expect(state.requiredSectionFor('loss')).toBe('cost');
+
+    state.setActiveSection('loss');
+    expect(state.activeSection).toBe('cost');
+  });
+
+  it('marks cost reviewed and advances to calculate', () => {
+    const state = getState();
+
+    state.markActiveSectionReviewed();
+
+    expect(state.frequencyReviewed).toBe(true);
+    expect(state.costReviewed).toBe(true);
+    expect(state.activeSection).toBe('loss');
+    expect(state.canVisitSection('loss')).toBe(true);
+    expect(state.requiredSectionFor('loss')).toBeNull();
+  });
+});
+
 describe('app scenario mode state', () => {
   it('uses a global scenario mode with shared scenario names and separate inputs', () => {
     const state = getState();
 
-    state.setActiveSection('frequency');
+    state.forceActiveSection('frequency');
     state.disableScenarioModeForActiveSection();
     state.enableScenarioModeForActiveSection();
 
@@ -20,7 +81,7 @@ describe('app scenario mode state', () => {
       state.setScenarioFrequencyMethod(scenarioId, 'odds');
       state.setScenarioFrequencyParam(scenarioId, 'odds', 4);
 
-      state.setActiveSection('cost');
+      state.forceActiveSection('cost');
       expect(state.scenarioMode).toBe(true);
       expect(state.frequencyScenarioMode).toBe(true);
       expect(state.costScenarioMode).toBe(true);
@@ -40,7 +101,7 @@ describe('app scenario mode state', () => {
       expect(state.scenarios).toHaveLength(0);
     } finally {
       state.disableScenarioModeForActiveSection();
-      state.setActiveSection('frequency');
+      state.forceActiveSection('frequency');
     }
   });
 });

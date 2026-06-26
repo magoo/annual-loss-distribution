@@ -23,16 +23,19 @@ Everything runs client-side. No backend required.
 
 ## How to use it (quick walkthrough)
 
-1. Pick a tab: **Frequency**, **Cost**, or **Calculate**.
-2. In Frequency and Cost, choose one modeling option:
+1. Start with **Frequency** and review how often incidents happen.
+2. Continue to **Cost** and review how expensive each incident is.
+3. Open **Calculate** to view combined annual loss results and the report summary.
+4. In Frequency and Cost, choose one modeling option:
    - **Lognormal**: most outcomes are moderate, with occasional bigger spikes
    - **PERT**: you estimate low / likely / high values
    - **Pareto**: you want to emphasize tail risk and rare extremes
    - **Scenario Mode**: model named threat scenarios directly
-3. Enter inputs (or use panelists/scenarios).
-4. Review the chart and switch between **PDF** and **CDF**.
-5. Adjust the confidence slider to see the range statement update.
-6. Open **Calculate** to view combined annual loss results and the report summary.
+5. Enter inputs (or use panelists/scenarios).
+6. Review the chart and switch between **PDF** and **CDF**.
+7. Adjust the confidence slider to see the range statement update.
+
+The workflow is guided in order: Frequency first, Cost second, Calculate third. You can still open later steps early, but the app asks you to make that choice intentionally.
 
 ## Modeling modes
 
@@ -78,6 +81,7 @@ The confidence interval module interpolates from the CDF and expresses the resul
 ## Current feature highlights
 
 - Frequency / Cost / Calculate workflow
+- Numbered workflow stepper with soft gates for the intended order
 - Integrated mode selector: **Lognormal | PERT | Pareto | Scenario Mode**
 - Mode-specific descriptive guidance text
 - Scenario editor with optional previews
