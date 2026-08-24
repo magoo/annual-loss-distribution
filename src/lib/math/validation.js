@@ -2,6 +2,13 @@
  * Validation rules dispatched by distribution type.
  */
 
+import { frequencyWorkRate } from './moments.js';
+import {
+  MIN_SIMULATION_ROUNDS,
+  MAX_EVENTS_PER_ROUND,
+  MAX_TOTAL_EVENT_DRAWS,
+} from './simulation-limits.js';
+
 function isMissingNumber(value) {
   return value == null || Number.isNaN(value);
 }
@@ -11,7 +18,7 @@ function isNonFinite(value) {
 }
 
 export function validateQuantiles(params) {
-  const { p50, p95 } = params;
+  const { p50, p95 } = params ?? {};
   const errors = {};
 
   if (isMissingNumber(p50)) {
@@ -40,7 +47,7 @@ export function validateQuantiles(params) {
 }
 
 export function validatePert(params) {
-  const { min, mode, max } = params;
+  const { min, mode, max } = params ?? {};
   const errors = {};
 
   if (isMissingNumber(min)) {
@@ -83,7 +90,7 @@ export function validatePert(params) {
 }
 
 export function validateOdds(params) {
-  const { odds } = params;
+  const { odds } = params ?? {};
   const errors = {};
 
   if (isMissingNumber(odds)) {
@@ -100,17 +107,37 @@ export function validateOdds(params) {
 export function validate(section, params, distType) {
   if (section === 'loss') return {};
 
+  let errors;
   if (distType === 'odds') {
-    return validateOdds(params);
+    errors = validateOdds(params);
+  } else {
+    switch (distType) {
+      case 'pert':
+        errors = validatePert(params);
+        break;
+      case 'lognormal':
+      case 'pareto':
+        errors = validateQuantiles(params);
+        break;
+      default:
+        errors = validateQuantiles(params);
+    }
   }
 
-  switch (distType) {
-    case 'pert':
-      return validatePert(params);
-    case 'lognormal':
-    case 'pareto':
-      return validateQuantiles(params);
-    default:
-      return validateQuantiles(params);
+  if (section !== 'frequency' || Object.keys(errors).length > 0 || distType === 'odds') {
+    return errors;
   }
+
+  const workRate = frequencyWorkRate(distType, params);
+  const highEstimate = distType === 'pert' ? params.max : params.p95;
+  const errorKey = distType === 'pert' ? 'max' : 'p95';
+  if (
+    !Number.isFinite(workRate) ||
+    workRate * MIN_SIMULATION_ROUNDS > MAX_TOTAL_EVENT_DRAWS ||
+    highEstimate > MAX_EVENTS_PER_ROUND
+  ) {
+    errors[errorKey] = 'Too large to simulate safely in the browser';
+  }
+
+  return errors;
 }

@@ -15,8 +15,8 @@ Instead of wrestling with raw probability math, you can describe how often bad e
   - **Distribution mode** (Lognormal, PERT, Pareto)
   - **Scenario Mode** (threat-by-threat scenario modeling)
 - Supports **Panel Mode** for multiple expert inputs
-- Shows results as **PDF** or **CDF**
-- Adds a configurable **confidence interval** summary
+- Shows results as an analytic **PDF** or empirical **distribution** chart, plus a **CDF**
+- Adds a configurable central **modeled outcome range** summary
 - Generates an **executive report** style narrative on the Calculate tab
 
 Everything runs client-side. No backend required.
@@ -55,7 +55,7 @@ Use this when you want to model specific threat scenarios (for example, ransomwa
 - Choose per-scenario frequency method and cost distribution
 - Use the same named scenarios on the Frequency and Cost tabs
 - Optional mini previews per scenario
-- Scenario simulations run as a **10,000-round Monte Carlo** process
+- Scenario simulations run for **up to 10,000 Monte Carlo rounds**; unusually high event counts reduce the round count to keep the browser responsive
 
 Scenario mode is global: the Frequency and Cost tabs share the same scenario list and scenario names, while each scenario keeps separate frequency and cost inputs.
 
@@ -71,12 +71,13 @@ Use this when multiple SMEs need to contribute.
 
 - In distribution mode, the app samples from your chosen distributions.
 - In scenario mode, the app samples events/costs from your scenario definitions.
-- For annual loss, it combines frequency and cost behavior over many simulated years.
+- For annual loss, it samples an annual incident count and sums an independent cost draw for every incident in each simulated year.
+- Simulation rounds adapt downward for high but feasible event counts, and extreme frequency inputs are rejected rather than allowing the browser to hang.
 - Results are shown as either:
-  - **PDF**: where outcomes are concentrated
+  - **PDF / Distribution**: where outcomes are concentrated
   - **CDF**: probability of being at or below a value
 
-The confidence interval module interpolates from the CDF and expresses the result in a plain-language sentence.
+The modeled-range module interpolates a central outcome range from the CDF and expresses it in a plain-language sentence. This is a predictive summary of model outcomes, not a statistical confidence interval for estimated parameters.
 
 ## Current feature highlights
 
@@ -86,7 +87,7 @@ The confidence interval module interpolates from the CDF and expresses the resul
 - Mode-specific descriptive guidance text
 - Scenario editor with optional previews
 - Panel analytics support
-- Confidence interval slider (50% to 95%)
+- Modeled outcome range slider (50% to 95%)
 - Executive report summary on Calculate
 - Deterministic seeded Monte Carlo implementation
 - Comprehensive math/unit test coverage

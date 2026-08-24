@@ -1,5 +1,5 @@
 <script>
-  let { view, onchange } = $props();
+  let { view, onchange, isHistogram = false } = $props();
 </script>
 
 <div class="view-toggle">
@@ -8,7 +8,7 @@
     class:active={view === 'pdf'}
     onclick={() => onchange('pdf')}
   >
-    PDF
+    {isHistogram ? 'Distribution' : 'PDF'}
   </button>
   <button
     class="toggle-btn"

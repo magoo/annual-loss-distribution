@@ -145,19 +145,45 @@ describe('computeScenarioMC', () => {
     expect(result.samples.length).toBe(10_000);
   });
 
-  it('returns null when a scenario has invalid odds parameters', () => {
-    const invalid = [
-      {
-        id: 1,
-        name: 'Invalid',
-        frequencyMethod: 'odds',
-        frequencyParams: { odds: 0 },
-        costDistType: 'lognormal',
-        costParams: { p50: 1_000, p95: 10_000 },
-      },
-    ];
+  it.each([0, 0.5, Infinity, NaN])('returns null for invalid odds %s', (odds) => {
+    const invalid = [{
+      id: 1,
+      name: 'Invalid',
+      frequencyMethod: 'odds',
+      frequencyParams: { odds },
+      costDistType: 'lognormal',
+      costParams: { p50: 1_000, p95: 10_000 },
+    }];
 
     expect(computeScenarioMC(invalid, 'loss')).toBeNull();
+  });
+
+  it('returns null when a valid heavy tail exceeds the safe event budget', () => {
+    const explosive = [{
+      id: 1,
+      name: 'Explosive frequency',
+      frequencyMethod: 'pareto',
+      frequencyParams: { p50: 1, p95: 1e12 },
+      costDistType: 'lognormal',
+      costParams: { p50: 1_000, p95: 10_000 },
+    }];
+
+    expect(computeScenarioMC(explosive, 'loss')).toBeNull();
+  });
+
+  it('supports the default infinite-mean Pareto scenario within a bounded run', () => {
+    const paretoScenario = [{
+      id: 1,
+      name: 'Heavy tail',
+      frequencyMethod: 'pareto',
+      frequencyParams: { p50: 1, p95: 10 },
+      costDistType: 'lognormal',
+      costParams: { p50: 1_000, p95: 10_000 },
+    }];
+
+    const result = computeScenarioMC(paretoScenario, 'loss');
+    expect(result).not.toBeNull();
+    expect(result.numRounds).toBe(10_000);
   });
 
   it('returns null when hybrid single-distribution samplers are invalid', () => {

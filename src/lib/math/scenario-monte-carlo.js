@@ -3,16 +3,24 @@ import { fitLognormal } from './lognormal.js';
 import { fitPareto } from './pareto.js';
 import { fitPert } from './pert.js';
 import { createRng } from './rng.js';
+import { empiricalCdfArrays } from './empirical.js';
+import { frequencyWorkRate } from './moments.js';
+import {
+  MIN_SIMULATION_ROUNDS,
+  MAX_EVENTS_PER_ROUND,
+  TARGET_EVENT_DRAWS,
+  MAX_TOTAL_EVENT_DRAWS,
+} from './simulation-limits.js';
 
 const DEFAULT_SEED = 54321;
 const NUM_ROUNDS = 10000;
-const NUM_PLOT_POINTS = 500;
 
 /**
  * Build an inverse-CDF sampler for a given distribution type and params.
  * Returns a function(rng) => sample, or null if params are invalid.
  */
 function buildSampler(distType, params) {
+  if (!params) return null;
   switch (distType) {
     case 'lognormal': {
       if (params.p50 <= 0 || params.p95 <= params.p50) return null;
@@ -39,51 +47,6 @@ function buildSampler(distType, params) {
 }
 
 /**
- * Compute empirical CDF arrays from sorted samples at evenly-spaced x points.
- */
-function empiricalCdfArrays(sortedSamples) {
-  const n = sortedSamples.length;
-  if (n === 0) return { x: [], yCdf: [] };
-
-  const lower = sortedSamples[Math.floor(n * 0.001)] || sortedSamples[0];
-  const upper = sortedSamples[Math.min(Math.floor(n * 0.999), n - 1)];
-
-  if (lower <= 0 || upper <= lower) {
-    // For integer/zero-heavy data (frequency), use linear spacing
-    const xMin = Math.max(0, sortedSamples[0]);
-    const xMax = sortedSamples[n - 1];
-    if (xMax <= xMin) return { x: [xMin], yCdf: [1] };
-
-    const step = (xMax - xMin) / (NUM_PLOT_POINTS - 1);
-    const x = [];
-    const yCdf = [];
-    let sIdx = 0;
-    for (let i = 0; i < NUM_PLOT_POINTS; i++) {
-      const xVal = xMin + i * step;
-      x.push(xVal);
-      while (sIdx < n && sortedSamples[sIdx] <= xVal) sIdx++;
-      yCdf.push(sIdx / n);
-    }
-    return { x, yCdf };
-  }
-
-  // Log-spaced for positive continuous data
-  const logLower = Math.log(lower);
-  const logUpper = Math.log(upper);
-  const logStep = (logUpper - logLower) / (NUM_PLOT_POINTS - 1);
-  const x = [];
-  const yCdf = [];
-  let sIdx = 0;
-  for (let i = 0; i < NUM_PLOT_POINTS; i++) {
-    const xVal = Math.exp(logLower + i * logStep);
-    x.push(xVal);
-    while (sIdx < n && sortedSamples[sIdx] <= xVal) sIdx++;
-    yCdf.push(sIdx / n);
-  }
-  return { x, yCdf };
-}
-
-/**
  * Run scenario-based Monte Carlo simulation.
  * Supports hybrid mode where frequency and/or cost can come from scenarios or a single distribution.
  *
@@ -96,7 +59,7 @@ function empiricalCdfArrays(sortedSamples) {
  * @param {object} [options.costParams] - Single dist params when cost scenario off
  * @param {string} [options.frequencyDistType] - Dist type when freq scenario off
  * @param {string} [options.costDistType] - Dist type when cost scenario off
- * @returns {{ samples: number[], x: number[], yCdf: number[], isHistogram: true } | null}
+ * @returns {{ samples: number[], x: number[], yCdf: number[], isHistogram: true, numRounds: number } | null}
  */
 export function computeScenarioMC(scenarios, activeSection, options = {}) {
   if (!scenarios || scenarios.length === 0) return null;
@@ -119,12 +82,16 @@ export function computeScenarioMC(scenarios, activeSection, options = {}) {
     if (frequencyScenarioMode) {
       if (s.frequencyMethod === 'odds') {
         const odds = s.frequencyParams?.odds;
-        if (!odds || odds <= 0) return null;
-        freqSampler = { type: 'odds', prob: 1 / odds };
+        if (!Number.isFinite(odds) || odds < 1) return null;
+        freqSampler = { type: 'odds', prob: 1 / odds, workRate: 1 / odds };
       } else {
         const sampler = buildSampler(s.frequencyMethod, s.frequencyParams);
         if (!sampler) return null;
-        freqSampler = { type: 'dist', sample: sampler };
+        freqSampler = {
+          type: 'dist',
+          sample: sampler,
+          workRate: frequencyWorkRate(s.frequencyMethod, s.frequencyParams),
+        };
       }
     }
 
@@ -147,24 +114,39 @@ export function computeScenarioMC(scenarios, activeSection, options = {}) {
     if (!singleFreqSampler) return null;
   }
 
+  const workRate = frequencyScenarioMode
+    ? scenarioSamplers.reduce((sum, sampler) => sum + sampler.freqSampler.workRate, 0)
+    : frequencyWorkRate(frequencyDistType, frequencyParams);
+  if (!Number.isFinite(workRate) || workRate < 0) return null;
+
   let singleCostSampler = null;
   if (needCost && !costScenarioMode && costParams) {
     singleCostSampler = buildSampler(costDistType, costParams);
     if (!singleCostSampler) return null;
   }
+  const plannedRounds = needCost
+    ? Math.min(
+        NUM_ROUNDS,
+        Math.max(MIN_SIMULATION_ROUNDS, Math.floor(TARGET_EVENT_DRAWS / Math.max(1, workRate))),
+      )
+    : NUM_ROUNDS;
+  if (needCost && plannedRounds * workRate > MAX_TOTAL_EVENT_DRAWS) return null;
 
-  const frequencySamples = new Float64Array(NUM_ROUNDS);
-  const lossSamples = needCost ? new Float64Array(NUM_ROUNDS) : null;
+  const frequencySamples = [];
+  const lossSamples = needCost ? [] : null;
   const costsList = needCost ? [] : null;
+  let totalEventDraws = 0;
 
-  for (let round = 0; round < NUM_ROUNDS; round++) {
+  for (let round = 0; round < plannedRounds; round++) {
     let totalIncidents = 0;
     let totalLoss = 0;
+    const scenarioCounts = frequencyScenarioMode ? [] : null;
 
     if (frequencyScenarioMode) {
-      // Scenario-based frequency: each scenario contributes incidents
+      // Determine the full year's incident count before drawing any costs so
+      // the work budget can stop cleanly between simulated years.
       for (let si = 0; si < scenarioSamplers.length; si++) {
-        const { freqSampler, costSampler } = scenarioSamplers[si];
+        const { freqSampler } = scenarioSamplers[si];
 
         let count;
         if (freqSampler.type === 'odds') {
@@ -174,29 +156,40 @@ export function computeScenarioMC(scenarios, activeSection, options = {}) {
           count = Math.max(0, Math.round(raw));
         }
 
-        totalIncidents += count;
+        if (!Number.isSafeInteger(count) || count > MAX_EVENTS_PER_ROUND) return null;
 
-        if (needCost) {
-          for (let k = 0; k < count; k++) {
-            let cost;
-            if (costScenarioMode) {
-              cost = Math.max(0, costSampler(rng));
-            } else {
-              cost = Math.max(0, singleCostSampler(rng));
-            }
-            costsList.push(cost);
-            totalLoss += cost;
-          }
-        }
+        totalIncidents += count;
+        if (!Number.isSafeInteger(totalIncidents) || totalIncidents > MAX_EVENTS_PER_ROUND) return null;
+        scenarioCounts.push(count);
       }
     } else {
       // Single-distribution frequency
       const rawFreq = singleFreqSampler(rng);
       const count = Math.max(0, Math.round(rawFreq));
+      if (!Number.isSafeInteger(count) || count > MAX_EVENTS_PER_ROUND) return null;
       totalIncidents = count;
 
-      if (needCost) {
-        for (let k = 0; k < count; k++) {
+    }
+
+    if (needCost) {
+      totalEventDraws += totalIncidents;
+      if (totalEventDraws > MAX_TOTAL_EVENT_DRAWS) return null;
+
+      if (frequencyScenarioMode) {
+        for (let si = 0; si < scenarioSamplers.length; si++) {
+          const count = scenarioCounts[si];
+          const { costSampler } = scenarioSamplers[si];
+          for (let k = 0; k < count; k++) {
+            const cost = costScenarioMode
+              ? Math.max(0, costSampler(rng))
+              : Math.max(0, singleCostSampler(rng));
+            if (!Number.isFinite(cost)) return null;
+            costsList.push(cost);
+            totalLoss += cost;
+          }
+        }
+      } else {
+        for (let k = 0; k < totalIncidents; k++) {
           let cost;
           if (costScenarioMode) {
             // Pick a random scenario's cost distribution
@@ -205,24 +198,25 @@ export function computeScenarioMC(scenarios, activeSection, options = {}) {
           } else {
             cost = Math.max(0, singleCostSampler(rng));
           }
+          if (!Number.isFinite(cost)) return null;
           costsList.push(cost);
           totalLoss += cost;
         }
       }
     }
 
-    frequencySamples[round] = totalIncidents;
-    if (lossSamples) lossSamples[round] = totalLoss;
+    frequencySamples.push(totalIncidents);
+    if (lossSamples) lossSamples.push(totalLoss);
   }
 
   // Return based on active section
   let samples;
   if (activeSection === 'frequency') {
-    samples = Array.from(frequencySamples);
+    samples = frequencySamples;
   } else if (activeSection === 'cost') {
     samples = costsList;
   } else {
-    samples = Array.from(lossSamples);
+    samples = lossSamples;
   }
 
   if (samples.length === 0) return null;
@@ -232,6 +226,7 @@ export function computeScenarioMC(scenarios, activeSection, options = {}) {
   sorted.sort();
 
   const { x, yCdf } = empiricalCdfArrays(sorted);
+  if (x.length === 0) return null;
 
-  return { samples, x, yCdf, isHistogram: true };
+  return { samples, x, yCdf, isHistogram: true, numRounds: frequencySamples.length };
 }

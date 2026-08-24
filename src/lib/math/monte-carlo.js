@@ -3,10 +3,17 @@ import { fitLognormal } from './lognormal.js';
 import { fitPareto } from './pareto.js';
 import { fitPert } from './pert.js';
 import { createRng } from './rng.js';
+import { empiricalCdfArrays } from './empirical.js';
+import { frequencyWorkRate } from './moments.js';
+import {
+  MIN_SIMULATION_ROUNDS,
+  MAX_EVENTS_PER_ROUND,
+  TARGET_EVENT_DRAWS,
+  MAX_TOTAL_EVENT_DRAWS,
+} from './simulation-limits.js';
 
 const DEFAULT_SEED = 12345;
 const NUM_SAMPLES = 100000;
-const NUM_PLOT_POINTS = 500;
 
 /**
  * Sample from a distribution using inverse transform sampling with seeded RNG.
@@ -24,7 +31,9 @@ function sampleDistribution(distType, params, n, rng) {
       const { mu, sigma } = fitLognormal(params.p50, params.p95);
       if (sigma <= 0 || !isFinite(mu) || !isFinite(sigma)) return null;
       for (let i = 0; i < n; i++) {
-        samples[i] = jStat.lognormal.inv(rng(), mu, sigma);
+        const sample = jStat.lognormal.inv(rng(), mu, sigma);
+        if (!Number.isFinite(sample) || sample < 0) return null;
+        samples[i] = sample;
       }
       break;
     }
@@ -33,7 +42,9 @@ function sampleDistribution(distType, params, n, rng) {
       const range = max - min;
       if (alpha <= 0 || beta <= 0 || range <= 0) return null;
       for (let i = 0; i < n; i++) {
-        samples[i] = min + range * jStat.beta.inv(rng(), alpha, beta);
+        const sample = min + range * jStat.beta.inv(rng(), alpha, beta);
+        if (!Number.isFinite(sample) || sample < 0) return null;
+        samples[i] = sample;
       }
       break;
     }
@@ -41,7 +52,9 @@ function sampleDistribution(distType, params, n, rng) {
       const { scale, shape } = fitPareto(params.p50, params.p95);
       if (scale <= 0 || shape <= 0 || !isFinite(scale) || !isFinite(shape)) return null;
       for (let i = 0; i < n; i++) {
-        samples[i] = jStat.pareto.inv(rng(), scale, shape);
+        const sample = jStat.pareto.inv(rng(), scale, shape);
+        if (!Number.isFinite(sample) || sample < 0) return null;
+        samples[i] = sample;
       }
       break;
     }
@@ -68,68 +81,19 @@ function validateDistParams(distType, params) {
 }
 
 /**
- * Compute empirical CDF value for a given x using binary search on sorted samples.
- */
-function empiricalCdf(sortedSamples, x) {
-  let lo = 0;
-  let hi = sortedSamples.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >>> 1;
-    if (sortedSamples[mid] <= x) {
-      lo = mid + 1;
-    } else {
-      hi = mid;
-    }
-  }
-  return lo / sortedSamples.length;
-}
-
-/**
- * Gaussian KDE in log-space with Silverman bandwidth.
- */
-function gaussianKdePdf(sortedSamples, xValues) {
-  const n = sortedSamples.length;
-  const logSamples = new Float64Array(n);
-  for (let i = 0; i < n; i++) {
-    logSamples[i] = Math.log(sortedSamples[i]);
-  }
-
-  const mean = logSamples.reduce((a, b) => a + b, 0) / n;
-  const variance = logSamples.reduce((sum, v) => sum + (v - mean) ** 2, 0) / n;
-  const stddev = Math.sqrt(variance);
-  const h = 1.06 * stddev * Math.pow(n, -0.2);
-
-  if (h <= 0 || !isFinite(h)) return xValues.map(() => 0);
-
-  const pdf = [];
-  const coeff = 1 / (n * h);
-
-  for (const x of xValues) {
-    const logX = Math.log(x);
-    let sum = 0;
-    for (let i = 0; i < n; i++) {
-      const u = (logX - logSamples[i]) / h;
-      sum += Math.exp(-0.5 * u * u);
-    }
-    const density = coeff * (1 / Math.sqrt(2 * Math.PI)) * (sum / x);
-    pdf.push(isFinite(density) ? density : 0);
-  }
-
-  return pdf;
-}
-
-/**
  * Compute Annual Loss distribution via Monte Carlo simulation.
- * Multiplies frequency samples by cost samples (supports mixed distribution types).
+ * Treats frequency as an annual incident count and sums an independent cost
+ * draw for every simulated incident (supports mixed distribution types).
  *
  * @param {object} allParams
  * @param {object} allParams.frequencyParams
  * @param {object} allParams.costParams
  * @param {string} allParams.frequencyDistType
  * @param {string} allParams.costDistType
- * @returns {{ x: number[], yPdf: number[], yCdf: number[] } | null}
+ * @returns {{ samples: number[], x: number[], yCdf: number[], isHistogram: true, numRounds: number } | null}
  */
 export function computeAnnualLoss(allParams) {
+  if (!allParams) return null;
   const {
     frequencyParams,
     costParams,
@@ -143,41 +107,50 @@ export function computeAnnualLoss(allParams) {
 
   const rng = createRng(DEFAULT_SEED);
 
-  const freqSamples = sampleDistribution(frequencyDistType, frequencyParams, NUM_SAMPLES, rng);
-  const costSamples = sampleDistribution(costDistType, costParams, NUM_SAMPLES, rng);
+  const workRate = frequencyWorkRate(frequencyDistType, frequencyParams);
+  if (!Number.isFinite(workRate) || workRate < 0) return null;
 
-  if (!freqSamples || !costSamples) return null;
+  const plannedSamples = Math.min(
+    NUM_SAMPLES,
+    Math.max(MIN_SIMULATION_ROUNDS, Math.floor(TARGET_EVENT_DRAWS / Math.max(1, workRate))),
+  );
+  if (plannedSamples * workRate > MAX_TOTAL_EVENT_DRAWS) return null;
 
-  // Pairwise multiplication: treats frequency as a continuous scale factor.
-  // This differs from scenario mode's compound model (N = round(freq), sum of N cost draws).
-  // Both have the same E[Loss] = E[Freq] * E[Cost] but different variances.
-  // The compound model is actuarially standard; this is a simpler FAIR-style approximation.
-  const lossSamples = new Float64Array(NUM_SAMPLES);
-  for (let i = 0; i < NUM_SAMPLES; i++) {
-    lossSamples[i] = freqSamples[i] * costSamples[i];
+  const frequencySamples = sampleDistribution(frequencyDistType, frequencyParams, plannedSamples, rng);
+  if (!frequencySamples) return null;
+
+  const eventCounts = new Uint32Array(plannedSamples);
+  let totalEventDraws = 0;
+  for (let year = 0; year < plannedSamples; year++) {
+    const count = Math.max(0, Math.round(frequencySamples[year]));
+    if (!Number.isSafeInteger(count) || count > MAX_EVENTS_PER_ROUND) return null;
+    totalEventDraws += count;
+    if (totalEventDraws > MAX_TOTAL_EVENT_DRAWS) return null;
+    eventCounts[year] = count;
+  }
+
+  const costSamples = sampleDistribution(costDistType, costParams, totalEventDraws, rng);
+  if (!costSamples) return null;
+
+  const lossSamples = new Float64Array(plannedSamples);
+  let costIndex = 0;
+  for (let i = 0; i < plannedSamples; i++) {
+    let annualLoss = 0;
+    for (let event = 0; event < eventCounts[i]; event++) {
+      annualLoss += costSamples[costIndex++];
+    }
+    lossSamples[i] = annualLoss;
   }
 
   lossSamples.sort();
+  const { x, yCdf } = empiricalCdfArrays(lossSamples);
+  if (x.length === 0) return null;
 
-  // Trim to the central plotting range; some tail mass remains outside the chart.
-  const lowerIdx = Math.floor(NUM_SAMPLES * 0.001);
-  const upperIdx = Math.floor(NUM_SAMPLES * 0.99);
-  const lower = lossSamples[lowerIdx];
-  const upper = lossSamples[upperIdx];
-
-  if (lower <= 0 || upper <= lower || !isFinite(lower) || !isFinite(upper)) return null;
-
-  // Log-spaced x values
-  const logLower = Math.log(lower);
-  const logUpper = Math.log(upper);
-  const logStep = (logUpper - logLower) / (NUM_PLOT_POINTS - 1);
-  const x = [];
-  for (let i = 0; i < NUM_PLOT_POINTS; i++) {
-    x.push(Math.exp(logLower + i * logStep));
-  }
-
-  const yPdf = gaussianKdePdf(lossSamples, x);
-  const yCdf = x.map((xVal) => empiricalCdf(lossSamples, xVal));
-
-  return { x, yPdf, yCdf };
+  return {
+    samples: Array.from(lossSamples),
+    x,
+    yCdf,
+    isHistogram: true,
+    numRounds: plannedSamples,
+  };
 }

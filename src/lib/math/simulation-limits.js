@@ -1,0 +1,4 @@
+export const MIN_SIMULATION_ROUNDS = 1000;
+export const MAX_EVENTS_PER_ROUND = 100000;
+export const TARGET_EVENT_DRAWS = 750000;
+export const MAX_TOTAL_EVENT_DRAWS = 1500000;

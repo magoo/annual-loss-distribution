@@ -29,11 +29,17 @@
     return computeDistribution(section, params, null, distType);
   });
 
-  onMount(async () => {
-    Plotly = (await import('plotly.js-basic-dist-min')).default;
-    plotlyReady = true;
+  onMount(() => {
+    let cancelled = false;
+    import('plotly.js-basic-dist-min').then((module) => {
+      if (cancelled) return;
+      Plotly = module.default;
+      plotlyReady = true;
+    });
+
     return () => {
-      if (containerEl) Plotly.purge(containerEl);
+      cancelled = true;
+      if (containerEl && Plotly) Plotly.purge(containerEl);
     };
   });
 

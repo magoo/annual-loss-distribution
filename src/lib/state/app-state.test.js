@@ -98,10 +98,38 @@ describe('app scenario mode state', () => {
       expect(state.scenarioMode).toBe(false);
       expect(state.frequencyScenarioMode).toBe(false);
       expect(state.costScenarioMode).toBe(false);
-      expect(state.scenarios).toHaveLength(0);
+      expect(state.scenarios.length).toBeGreaterThan(0);
+
+      state.enableScenarioModeForActiveSection();
+      expect(state.scenarios[0].name).toBe('Shared response scenario');
     } finally {
       state.disableScenarioModeForActiveSection();
       state.forceActiveSection('frequency');
     }
+  });
+
+  it('does not review a panel while any panelist has incomplete parameters', () => {
+    const state = getState();
+    state.disableScenarioModeForActiveSection();
+    state.forceActiveSection('frequency');
+    state.setDistType('lognormal');
+    if (!state.frequencyPanelActive) state.addPanelist();
+
+    const panelistCount = state.frequencyPanelists.length;
+    state.setDistType('pareto');
+    expect(state.frequencyPanelists).toHaveLength(panelistCount);
+
+    state.enableScenarioModeForActiveSection();
+    expect(state.frequencyPanelActive).toBe(false);
+    expect(state.frequencyPanelists).toHaveLength(panelistCount);
+    state.disableScenarioModeForActiveSection();
+    expect(state.frequencyPanelActive).toBe(true);
+
+    const panelistId = state.frequencyPanelists[0].id;
+    state.setPanelistParam(panelistId, 'p50', null);
+
+    expect(state.isValid).toBe(false);
+    state.markActiveSectionReviewed();
+    expect(state.activeSection).toBe('frequency');
   });
 });

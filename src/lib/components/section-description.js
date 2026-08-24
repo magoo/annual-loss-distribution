@@ -87,41 +87,41 @@ function buildInputSourceBullet(panelActive, panelists = []) {
 
 function simulationIntro(frequencyScenarioMode, costScenarioMode) {
   if (frequencyScenarioMode && costScenarioMode) {
-    return 'This executive summary reflects a scenario-based Monte Carlo model that simulates 10,000 potential years of loss outcomes.';
+    return 'This executive summary reflects a scenario-based Monte Carlo model that simulates up to 10,000 potential years of loss outcomes.';
   }
 
   if (frequencyScenarioMode || costScenarioMode) {
-    return 'This executive summary reflects a hybrid Monte Carlo model that simulates 10,000 potential years and combines scenario-driven inputs with distribution-driven inputs.';
+    return 'This executive summary reflects a hybrid Monte Carlo model that simulates up to 10,000 potential years and combines scenario-driven inputs with distribution-driven inputs.';
   }
 
-  return 'This executive summary reflects a 100,000-sample Monte Carlo model that combines incident frequency and incident cost to estimate annual loss outcomes.';
+  return 'This executive summary reflects a Monte Carlo model of up to 100,000 potential years that combines incident frequency and incident cost to estimate annual loss outcomes.';
 }
 
 function simulationBullets(frequencyScenarioMode, costScenarioMode, scenarios) {
   const bullets = [];
 
   if (frequencyScenarioMode && costScenarioMode) {
-    bullets.push('Simulation mode: 10,000-round scenario-based Monte Carlo');
+    bullets.push('Simulation mode: Up to 10,000-round scenario-based Monte Carlo');
     bullets.push(`Scenario set: ${scenarioCountLabel(scenarios)} (${scenarioNamesList(scenarios)})`);
     return bullets;
   }
 
   if (frequencyScenarioMode) {
-    bullets.push('Simulation mode: 10,000-round hybrid Monte Carlo');
+    bullets.push('Simulation mode: Up to 10,000-round hybrid Monte Carlo');
     bullets.push(`Scenario set: Frequency sampled from ${scenarioCountLabel(scenarios)} (${scenarioNamesList(scenarios)})`);
     bullets.push('Cost modeling: Distribution-based');
     return bullets;
   }
 
   if (costScenarioMode) {
-    bullets.push('Simulation mode: 10,000-round hybrid Monte Carlo');
+    bullets.push('Simulation mode: Up to 10,000-round hybrid Monte Carlo');
     bullets.push(`Scenario set: Cost sampled from ${scenarioCountLabel(scenarios)} (${scenarioNamesList(scenarios)})`);
     bullets.push('Frequency modeling: Distribution-based');
     return bullets;
   }
 
-  bullets.push('Simulation mode: 100,000-sample distribution-based Monte Carlo');
-  bullets.push('Method: Frequency and cost are sampled and multiplied in each run to form annual-loss outcomes');
+  bullets.push('Simulation mode: Up to 100,000-round distribution-based Monte Carlo');
+  bullets.push('Method: Frequency is sampled as an incident count, then independent per-incident costs are summed for each simulated year');
   return bullets;
 }
 
@@ -220,7 +220,9 @@ function confidenceNarrative({
     : 'n/a and n/a';
 
   return [
-    `There is a ${confidenceLevel}% belief that between ${incidentRange} incidents will take place at costs between ${costRange} per incident, with an expected total annual loss between ${lossRange}.`,
+    `The central ${confidenceLevel}% of modeled annual incident counts range between ${incidentRange} incidents.`,
+    `The central ${confidenceLevel}% of modeled per-incident costs range between ${costRange}.`,
+    `The central ${confidenceLevel}% of modeled annual losses range between ${lossRange}.`,
   ];
 }
 
@@ -230,7 +232,7 @@ function confidenceCopyLines(confidenceStatements) {
   }
 
   return [
-    'Confidence Interval Summary:',
+    'Modeled Outcome Ranges:',
     ...confidenceStatements.map((line) => `- ${line}`),
   ];
 }

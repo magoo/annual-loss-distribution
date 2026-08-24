@@ -14,9 +14,18 @@
   let Plotly;
   let plotlyReady = $state(false);
 
-  onMount(async () => {
-    Plotly = (await import('plotly.js-basic-dist-min')).default;
-    plotlyReady = true;
+  onMount(() => {
+    let cancelled = false;
+    import('plotly.js-basic-dist-min').then((module) => {
+      if (cancelled) return;
+      Plotly = module.default;
+      plotlyReady = true;
+    });
+
+    return () => {
+      cancelled = true;
+      if (containerEl && Plotly) Plotly.purge(containerEl);
+    };
   });
 
   function formatXValue(xVal) {
@@ -85,7 +94,7 @@
         xaxis: { visible: false },
         yaxis: { visible: false },
         annotations: [{
-          text: 'Enter valid parameters to see the distribution',
+          text: 'Enter valid, computationally reasonable parameters to see the distribution',
           xref: 'paper',
           yref: 'paper',
           x: 0.5,
@@ -109,6 +118,10 @@
     // Histogram mode (scenario MC) vs standard continuous mode
     if (chartData.isHistogram) {
       let trace, layout;
+      const zeroCount = useDollars
+        ? chartData.samples.reduce((count, value) => count + (value === 0 ? 1 : 0), 0)
+        : 0;
+      const zeroShare = chartData.samples.length > 0 ? zeroCount / chartData.samples.length : 0;
 
       if (isPdf) {
         const isIntegerData = chartData.samples.every((v) => Number.isInteger(v));
@@ -126,51 +139,55 @@
             const numBins = 60;
             const logStep = (logHi - logLo) / numBins;
 
-            const edges = [];
-            for (let i = 0; i <= numBins; i++) {
-              edges.push(Math.pow(10, logLo + i * logStep));
-            }
-
-            const counts = new Array(numBins).fill(0);
-            let si = 0;
-            for (let b = 0; b < numBins; b++) {
-              const right = edges[b + 1];
-              while (si < sorted.length && sorted[si] <= right) {
-                si++;
-                counts[b]++;
+            if (logStep > 0 && Number.isFinite(logStep)) {
+              const edges = [];
+              for (let i = 0; i <= numBins; i++) {
+                edges.push(Math.pow(10, logLo + i * logStep));
               }
-            }
 
-            const centers = [];
-            const widths = [];
-            for (let b = 0; b < numBins; b++) {
-              centers.push(Math.sqrt(edges[b] * edges[b + 1]));
-              widths.push(edges[b + 1] - edges[b]);
-            }
-
-            const total = chartData.samples.length;
-            const hovertext = centers.map((center, i) => {
-              const pct = ((counts[i] / total) * 100).toFixed(1);
-              if (isLossSection) {
-                const cdfAtCenter = interpolateCdfAtX(chartData.x, chartData.yCdf, center);
-                return buildHoverText(center, cdfAtCenter, `Bin share: ${pct}%`);
+              const counts = new Array(numBins).fill(0);
+              let si = 0;
+              for (let b = 0; b < numBins; b++) {
+                const right = edges[b + 1];
+                while (si < sorted.length && sorted[si] <= right) {
+                  si++;
+                  counts[b]++;
+                }
               }
-              const label = '$' + center.toLocaleString('en-US', { maximumFractionDigits: 0 });
-              return `${label} (${pct}%)`;
-            });
+              // Preserve the visible probability mass beyond the focused bin range.
+              counts[numBins - 1] += sorted.length - si;
 
-            trace = {
-              x: centers,
-              y: counts,
-              type: 'bar',
-              width: widths,
-              hoverinfo: 'text',
-              hovertext,
-              marker: {
-                color: 'rgba(247, 37, 133, 0.5)',
-                line: { color: '#f72585', width: 1 },
-              },
-            };
+              const centers = [];
+              const widths = [];
+              for (let b = 0; b < numBins; b++) {
+                centers.push(Math.sqrt(edges[b] * edges[b + 1]));
+                widths.push(edges[b + 1] - edges[b]);
+              }
+
+              const total = chartData.samples.length;
+              const hovertext = centers.map((center, i) => {
+                const pct = ((counts[i] / total) * 100).toFixed(1);
+                if (isLossSection) {
+                  const cdfAtCenter = interpolateCdfAtX(chartData.x, chartData.yCdf, center);
+                  return buildHoverText(center, cdfAtCenter, `Outcome share: ${pct}%`);
+                }
+                const label = '$' + center.toLocaleString('en-US', { maximumFractionDigits: 0 });
+                return `${label} (${pct}%)`;
+              });
+
+              trace = {
+                x: centers,
+                y: counts,
+                type: 'bar',
+                width: widths,
+                hoverinfo: 'text',
+                hovertext,
+                marker: {
+                  color: 'rgba(247, 37, 133, 0.5)',
+                  line: { color: '#f72585', width: 1 },
+                },
+              };
+            }
           }
         } else if (isIntegerData) {
           // Integer data (frequency): count occurrences of each value
@@ -216,16 +233,19 @@
         }
       } else {
         // Empirical CDF line
+        const cdfPoints = chartData.x
+          .map((xValue, index) => ({ x: xValue, y: chartData.yCdf[index] }))
+          .filter((point) => !useDollars || point.x > 0);
         const hovertext = isLossSection
-          ? chartData.x.map((xVal, i) => buildHoverText(xVal, chartData.yCdf[i]))
+          ? cdfPoints.map((point) => buildHoverText(point.x, point.y))
           : null;
 
         trace = {
-          x: chartData.x,
-          y: chartData.yCdf,
+          x: cdfPoints.map((point) => point.x),
+          y: cdfPoints.map((point) => point.y),
           type: 'scatter',
           mode: 'lines',
-          line: { color: '#4361ee', width: 2.5, shape: 'spline' },
+          line: { color: '#4361ee', width: 2.5, shape: 'hv' },
           ...(hovertext ? { hoverinfo: 'text', hovertext } : {}),
         };
       }
@@ -259,7 +279,7 @@
         },
         yaxis: {
           title: {
-            text: isPdf ? 'Occurrences' : 'Cumulative Probability',
+            text: isPdf ? 'Simulated Outcomes' : 'Cumulative Probability',
             font: { size: 12, color: '#6b7280', family: 'Inter, sans-serif' },
           },
           gridcolor: '#f0f0f0',
@@ -274,9 +294,27 @@
           bgcolor: '#1a1a2e',
           font: { color: '#fff', size: 13, family: 'Inter, sans-serif' },
         },
+        ...(zeroShare > 0
+          ? {
+              annotations: [{
+                text: `${(zeroShare * 100).toFixed(1)}% of simulated outcomes are $0`,
+                xref: 'paper',
+                yref: 'paper',
+                x: 0.01,
+                y: 0.99,
+                xanchor: 'left',
+                yanchor: 'top',
+                showarrow: false,
+                bgcolor: 'rgba(255,255,255,0.9)',
+                bordercolor: '#e5e7eb',
+                borderpad: 6,
+                font: { size: 12, color: '#6b7280', family: 'Inter, sans-serif' },
+              }],
+            }
+          : {}),
       };
 
-      Plotly.newPlot(containerEl, [trace], layout, { displayModeBar: false, responsive: true });
+      Plotly.react(containerEl, [trace], layout, { displayModeBar: false, responsive: true });
       return;
     }
 

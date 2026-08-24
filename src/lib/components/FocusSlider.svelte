@@ -8,7 +8,7 @@
 <div class="focus-slider">
   <label class="focus-label" for="focus-slider">
     {#if fullTail}
-      Showing full tail
+      Showing full plotted range
     {:else}
       Showing up to P{normalized}
     {/if}

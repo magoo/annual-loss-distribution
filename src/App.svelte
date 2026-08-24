@@ -147,7 +147,7 @@
       <section class="chart-section">
         <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} {focusPercentile} />
         <div class="chart-controls">
-          <ViewToggle view={appState.view} onchange={appState.setView} />
+          <ViewToggle view={appState.view} onchange={appState.setView} isHistogram={appState.chartData?.isHistogram} />
           <FocusSlider bind:focusPercentile />
         </div>
       </section>
@@ -206,7 +206,7 @@
       <section class="chart-section">
         <PlotlyChart chartData={appState.chartData} view={appState.view} useDollars={appState.useDollars} activeSection={appState.activeSection} {focusPercentile} />
         <div class="chart-controls">
-          <ViewToggle view={appState.view} onchange={appState.setView} />
+          <ViewToggle view={appState.view} onchange={appState.setView} isHistogram={appState.chartData?.isHistogram} />
           <FocusSlider bind:focusPercentile />
         </div>
       </section>
@@ -222,7 +222,13 @@
 
     {#if appState.activeSection !== 'loss'}
       <div class="workflow-action">
-        <button type="button" class="workflow-continue-btn" onclick={handleWorkflowContinue}>
+        <button
+          type="button"
+          class="workflow-continue-btn"
+          onclick={handleWorkflowContinue}
+          disabled={!appState.isValid}
+          title={appState.isValid ? '' : 'Resolve invalid or incomplete inputs before continuing'}
+        >
           {reviewActionLabel}
         </button>
       </div>
@@ -347,6 +353,15 @@
   .prompt-btn:hover,
   .workflow-continue-btn:hover {
     background: var(--color-primary-hover);
+  }
+
+  .workflow-continue-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .workflow-continue-btn:disabled:hover {
+    background: var(--color-primary);
   }
 
   .prompt-btn.secondary {

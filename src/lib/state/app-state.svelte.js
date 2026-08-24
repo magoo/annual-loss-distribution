@@ -2,6 +2,8 @@ import { SECTIONS, SECTION_TYPES, DIST_CONFIGS, DIST_TYPES, getDistConfig, DEFAU
 import { computeDistribution } from '../math/distributions.js';
 import { computeScenarioMC } from '../math/scenario-monte-carlo.js';
 import { validate } from '../math/validation.js';
+import { frequencyWorkRate } from '../math/moments.js';
+import { MIN_SIMULATION_ROUNDS, MAX_TOTAL_EVENT_DRAWS } from '../math/simulation-limits.js';
 
 // --- Core state ---
 let activeSection = $state('frequency');
@@ -26,8 +28,8 @@ let scenarios = $state([]);
 let nextScenarioId = $state(1);
 
 // Per-section panel active (derived from panelist count)
-const frequencyPanelActive = $derived(frequencyPanelists.length >= 2);
-const costPanelActive = $derived(costPanelists.length >= 2);
+const frequencyPanelActive = $derived(!scenarioModeActive && frequencyPanelists.length >= 2);
+const costPanelActive = $derived(!scenarioModeActive && costPanelists.length >= 2);
 const activePanelActive = $derived(
   activeSection === 'frequency' ? frequencyPanelActive : costPanelActive
 );
@@ -62,6 +64,13 @@ function averageParams(panelistList, sectionKey) {
   const config = getDistConfig(distType, sectionKey);
   if (!config) return {};
   const fields = config.fields;
+  const hasInvalidPanelist = panelistList.some(
+    (panelist) => Object.keys(validate(sectionKey, panelist.params, distType)).length > 0,
+  );
+  if (hasInvalidPanelist) {
+    return Object.fromEntries(fields.map((field) => [field.key, null]));
+  }
+
   const averaged = {};
   for (const field of fields) {
     const values = panelistList
@@ -126,7 +135,33 @@ const validationErrors = $derived.by(() => {
   return {};
 });
 
+function scenariosAreValidFor(section) {
+  if (scenarios.length === 0) return false;
+  const inputsValid = scenarios.every((scenario) => {
+    const frequencyValid = Object.keys(
+      validate('frequency', scenario.frequencyParams, scenario.frequencyMethod),
+    ).length === 0;
+    if (section === 'frequency') return frequencyValid;
+
+    const costValid = Object.keys(
+      validate('cost', scenario.costParams, scenario.costDistType),
+    ).length === 0;
+    return frequencyValid && costValid;
+  });
+  if (!inputsValid || section === 'frequency') return inputsValid;
+
+  const aggregateWorkRate = scenarios.reduce((sum, scenario) => {
+    if (scenario.frequencyMethod === 'odds') {
+      return sum + 1 / scenario.frequencyParams.odds;
+    }
+    return sum + frequencyWorkRate(scenario.frequencyMethod, scenario.frequencyParams);
+  }, 0);
+  return Number.isFinite(aggregateWorkRate) &&
+    aggregateWorkRate * MIN_SIMULATION_ROUNDS <= MAX_TOTAL_EVENT_DRAWS;
+}
+
 const isValid = $derived.by(() => {
+  if (scenarioModeActive) return scenariosAreValidFor(activeSection);
   if (activeSection === 'loss') {
     return Object.keys(frequencyValidationErrors).length === 0 &&
            Object.keys(costValidationErrors).length === 0;
@@ -210,6 +245,7 @@ function forceActiveSection(section) {
 }
 
 function markActiveSectionReviewed() {
+  if (!isValid) return;
   if (activeSection === 'frequency') {
     frequencyReviewed = true;
     activeSection = 'cost';
@@ -256,15 +292,14 @@ function setDistType(distType) {
     frequencyDistType = distType;
     if (!keysMatch) {
       frequencyParams = { ...newConfig.defaults };
+      frequencyPanelists = [];
     }
-    // Clear panelists when switching dist type (incompatible param structures)
-    frequencyPanelists = [];
   } else {
     costDistType = distType;
     if (!keysMatch) {
       costParams = { ...newConfig.defaults };
+      costPanelists = [];
     }
-    costPanelists = [];
   }
 }
 
@@ -285,15 +320,12 @@ function enableScenarioModeForActiveSection() {
   if (activeSection !== 'frequency' && activeSection !== 'cost') return;
   if (scenarioModeActive) return;
   scenarioModeActive = true;
-  frequencyPanelists = [];
-  costPanelists = [];
   seedDefaultScenarios();
 }
 
 function disableScenarioModeForActiveSection() {
   if (!scenarioModeActive) return;
   scenarioModeActive = false;
-  scenarios = [];
 }
 
 function toggleScenarioMode() {
@@ -358,7 +390,6 @@ function addPanelist() {
   // Mutual exclusivity: panel mode uses section-level panelists, while scenario mode is global.
   if (scenarioModeActive) {
     scenarioModeActive = false;
-    scenarios = [];
   }
 
   const distType = activeSection === 'frequency' ? frequencyDistType : costDistType;
