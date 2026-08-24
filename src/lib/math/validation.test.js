@@ -203,4 +203,23 @@ describe('validate dispatcher', () => {
     const errors = validate('frequency', { odds: Infinity }, 'odds');
     expect(errors.odds).toBe('Must be a finite number');
   });
+
+  it('rejects frequency models that cannot meet the safe simulation budget', () => {
+    const quantileErrors = validate('frequency', { p50: 1, p95: 1e12 }, 'pareto');
+    const pertErrors = validate('frequency', { min: 1000, mode: 2000, max: 3000 }, 'pert');
+
+    expect(quantileErrors.p95).toContain('Too large');
+    expect(pertErrors.max).toContain('Too large');
+  });
+
+  it('does not apply frequency workload limits to cost distributions', () => {
+    expect(validate('cost', { p50: 1, p95: 1e12 }, 'pareto')).toEqual({});
+  });
+
+  it('handles missing parameter objects without throwing', () => {
+    expect(validate('frequency', null, 'lognormal')).toEqual({
+      p50: 'Required',
+      p95: 'Required',
+    });
+  });
 });

@@ -83,10 +83,10 @@ describe('getSectionDescription', () => {
 
     expect(model.mode).toBe('executive');
     expect(model.title).toBe('Executive Summary');
-    expect(model.intro).toContain('100,000-sample Monte Carlo');
+    expect(model.intro).toContain('up to 100,000 potential years');
 
     const simulationSection = model.sections.find((section) => section.title === 'Simulation Setup');
-    expect(simulationSection?.bullets).toContain('Simulation mode: 100,000-sample distribution-based Monte Carlo');
+    expect(simulationSection?.bullets).toContain('Simulation mode: Up to 100,000-round distribution-based Monte Carlo');
 
     const frequencySection = model.sections.find((section) => section.title === 'Frequency Inputs');
     expect(frequencySection?.bullets).toContain('Distribution: Lognormal');
@@ -99,11 +99,11 @@ describe('getSectionDescription', () => {
 
     const incidentInterval = expectedIncidentIntervalText(baseFrequencyParams, 'lognormal', 90);
     const costInterval = expectedCostIntervalText(baseCostParams, 'pareto', 90);
-    expect(model.confidenceNarrative).toHaveLength(1);
-    expect(model.confidenceNarrative[0]).toContain('90% belief');
+    expect(model.confidenceNarrative).toHaveLength(3);
+    expect(model.confidenceNarrative[0]).toContain('central 90% of modeled annual incident counts');
     expect(model.confidenceNarrative[0]).toContain(`between ${incidentInterval.lower} and ${incidentInterval.upper} incidents`);
-    expect(model.confidenceNarrative[0]).toContain(`at costs between ${costInterval.lower} and ${costInterval.upper} per incident`);
-    expect(model.confidenceNarrative[0]).toContain('expected total annual loss between $10 and $190');
+    expect(model.confidenceNarrative[1]).toContain(`between ${costInterval.lower} and ${costInterval.upper}`);
+    expect(model.confidenceNarrative[2]).toContain('between $10 and $190');
     expect(model.sections.some((section) => section.title === 'Annual Loss Confidence Interval')).toBe(false);
   });
 
@@ -132,7 +132,7 @@ describe('getSectionDescription', () => {
 
     expect(model.intro).toContain('scenario-based Monte Carlo');
     const simulationSection = model.sections.find((section) => section.title === 'Simulation Setup');
-    expect(simulationSection?.bullets).toContain('Simulation mode: 10,000-round scenario-based Monte Carlo');
+    expect(simulationSection?.bullets).toContain('Simulation mode: Up to 10,000-round scenario-based Monte Carlo');
     expect(simulationSection?.bullets).toContain('Scenario set: 2 threat scenarios (Ransomware, Vendor outage)');
     expect(model.confidenceNarrative[0]).not.toContain('n/a');
   });
@@ -183,11 +183,11 @@ describe('getSectionDescription', () => {
     });
 
     expect(model.copyText).toContain('Executive Summary');
-    expect(model.copyText).toContain('Confidence Interval Summary:');
-    expect(model.copyText).toContain('There is a 90% belief that between');
-    expect(model.copyText).toContain('at costs between');
+    expect(model.copyText).toContain('Modeled Outcome Ranges:');
+    expect(model.copyText).toContain('The central 90% of modeled annual incident counts');
+    expect(model.copyText).toContain('The central 90% of modeled per-incident costs');
     expect(model.copyText).toContain('Simulation Setup:');
-    expect(model.copyText).toContain('- Simulation mode: 100,000-sample distribution-based Monte Carlo');
+    expect(model.copyText).toContain('- Simulation mode: Up to 100,000-round distribution-based Monte Carlo');
     expect(model.copyText).not.toContain('Annual Loss Confidence Interval:');
   });
 });

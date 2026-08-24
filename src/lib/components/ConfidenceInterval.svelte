@@ -34,7 +34,7 @@
   );
 
   const summaryText = $derived(
-    `There is a ${confidenceLevel}% confidence that ${sectionNoun} fall between ${formatCompact(lowerBound, useDollars)} and ${formatCompact(upperBound, useDollars)}, with a median of ${formatCompact(median, useDollars)}.`
+    `The central ${confidenceLevel}% of modeled ${sectionNoun} fall between ${formatCompact(lowerBound, useDollars)} and ${formatCompact(upperBound, useDollars)}, with a median of ${formatCompact(median, useDollars)}.`
   );
 
   function copyToClipboard() {
@@ -47,7 +47,7 @@
 
 {#if chartData}
   <div class="ci-card" class:compact>
-    <h3 class="ci-title">Confidence Interval</h3>
+    <h3 class="ci-title">Modeled Outcome Range</h3>
 
     <div class="slider-row">
       <label class="slider-label" for="ci-slider">{confidenceLevel}%</label>

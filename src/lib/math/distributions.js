@@ -154,7 +154,7 @@ export function getDistConfig(distType, section) {
  * @param {object} params - Section-specific parameters
  * @param {object} [allParams] - All params (needed for loss MC simulation)
  * @param {string} [distType] - Distribution type (lognormal, pert, pareto)
- * @returns {{ x: number[], yPdf: number[], yCdf: number[] } | null}
+ * @returns {{ x: number[], yPdf?: number[], yCdf: number[], samples?: number[], isHistogram?: boolean, numRounds?: number } | null}
  */
 export function computeDistribution(section, params, allParams, distType) {
   if (section === 'loss') {

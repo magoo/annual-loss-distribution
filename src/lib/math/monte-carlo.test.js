@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { computeAnnualLoss } from './monte-carlo.js';
-import { interpolateCdf } from './test-utils.js';
 
 const validParams = {
   frequencyParams: { p50: 5, p95: 20 },
@@ -26,14 +25,13 @@ describe('computeAnnualLoss', () => {
     });
   });
 
-  describe('PDF non-negativity', () => {
-    it('all PDF values are >= 0', () => {
+  describe('empirical output', () => {
+    it('returns a histogram contract with non-negative samples', () => {
       const result = computeAnnualLoss(validParams);
       expect(result).not.toBeNull();
-
-      for (const y of result.yPdf) {
-        expect(y).toBeGreaterThanOrEqual(0);
-      }
+      expect(result.isHistogram).toBe(true);
+      expect(result.samples).toHaveLength(100_000);
+      expect(result.samples.every((sample) => Number.isFinite(sample) && sample >= 0)).toBe(true);
     });
   });
 
@@ -41,14 +39,12 @@ describe('computeAnnualLoss', () => {
     it('returns finite arrays with strictly increasing x values', () => {
       const result = computeAnnualLoss(validParams);
       expect(result).not.toBeNull();
-      expect(result.x.length).toBe(500);
-      expect(result.yPdf.length).toBe(result.x.length);
+      expect(result.x.length).toBeGreaterThan(1);
       expect(result.yCdf.length).toBe(result.x.length);
 
       for (let i = 0; i < result.x.length; i++) {
         expect(Number.isFinite(result.x[i])).toBe(true);
-        expect(result.x[i]).toBeGreaterThan(0);
-        expect(Number.isFinite(result.yPdf[i])).toBe(true);
+        expect(result.x[i]).toBeGreaterThanOrEqual(0);
         expect(Number.isFinite(result.yCdf[i])).toBe(true);
         if (i > 0) {
           expect(result.x[i]).toBeGreaterThan(result.x[i - 1]);
@@ -56,44 +52,57 @@ describe('computeAnnualLoss', () => {
       }
 
       expect(result.yCdf[0]).toBeGreaterThanOrEqual(0);
-      expect(result.yCdf[result.yCdf.length - 1]).toBeLessThanOrEqual(1);
-      expect(result.yCdf[result.yCdf.length - 1]).toBeGreaterThan(0.9);
+      expect(result.yCdf[result.yCdf.length - 1]).toBe(1);
+      expect(result.x[result.x.length - 1]).toBe(result.samples[result.samples.length - 1]);
     });
 
-    it('handles extreme but valid mixed distributions without NaN/Infinity', () => {
+    it('rejects computationally explosive frequency tails without entering event loops', () => {
       const result = computeAnnualLoss({
-        frequencyParams: { p50: 0.01, p95: 2 },
-        costParams: { p50: 1000, p95: 2_000_000 },
+        frequencyParams: { p50: 1, p95: 1e12 },
+        costParams: { p50: 1000, p95: 10_000 },
+        frequencyDistType: 'pareto',
+        costDistType: 'lognormal',
+      });
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('compound annual-loss behavior', () => {
+    it('sums independent per-incident costs rather than multiplying one cost by frequency', () => {
+      const result = computeAnnualLoss({
+        frequencyParams: { min: 1.49, mode: 1.5, max: 1.51 },
+        costParams: { min: 100, mode: 100.5, max: 101 },
+        frequencyDistType: 'pert',
+        costDistType: 'pert',
+      });
+      expect(result).not.toBeNull();
+      expect(result.samples.some((loss) => loss >= 100 && loss <= 101)).toBe(true);
+      expect(result.samples.some((loss) => loss >= 200 && loss <= 202)).toBe(true);
+    });
+
+    it('preserves zero-loss years as an explicit CDF point mass', () => {
+      const result = computeAnnualLoss({
+        frequencyParams: { p50: 0.25, p95: 1 },
+        costParams: { p50: 1000, p95: 10_000 },
+        frequencyDistType: 'lognormal',
+        costDistType: 'lognormal',
+      });
+      expect(result).not.toBeNull();
+      expect(result.x[0]).toBe(0);
+      expect(result.yCdf[0]).toBeGreaterThan(0);
+      expect(result.samples.some((loss) => loss === 0)).toBe(true);
+    });
+
+    it('supports the default infinite-mean Pareto frequency without unbounded work', () => {
+      const result = computeAnnualLoss({
+        frequencyParams: { p50: 1, p95: 10 },
+        costParams: { p50: 50_000, p95: 500_000 },
         frequencyDistType: 'pareto',
         costDistType: 'lognormal',
       });
       expect(result).not.toBeNull();
-
-      for (let i = 0; i < result.x.length; i++) {
-        expect(Number.isFinite(result.x[i])).toBe(true);
-        expect(Number.isFinite(result.yPdf[i])).toBe(true);
-        expect(Number.isFinite(result.yCdf[i])).toBe(true);
-      }
-    });
-  });
-
-  describe('P50/P95 fidelity (statistical)', () => {
-    it('empirical CDF at theoretical median ≈ 0.50', () => {
-      const Z_95 = 1.6449;
-      const muFreq = Math.log(validParams.frequencyParams.p50);
-      const sigmaFreq = (Math.log(validParams.frequencyParams.p95) - muFreq) / Z_95;
-      const muCost = Math.log(validParams.costParams.p50);
-      const sigmaCost = (Math.log(validParams.costParams.p95) - muCost) / Z_95;
-
-      const muProduct = muFreq + muCost;
-      const theoreticalMedian = Math.exp(muProduct);
-
-      const result = computeAnnualLoss(validParams);
-      expect(result).not.toBeNull();
-
-      const cdfAtMedian = interpolateCdf(result.x, result.yCdf, theoreticalMedian);
-      expect(cdfAtMedian).toBeGreaterThan(0.35);
-      expect(cdfAtMedian).toBeLessThan(0.65);
+      expect(result.numRounds).toBeGreaterThanOrEqual(1000);
+      expect(result.numRounds).toBeLessThanOrEqual(100_000);
     });
   });
 
@@ -106,8 +115,8 @@ describe('computeAnnualLoss', () => {
       expect(result2).not.toBeNull();
 
       expect(result1.x).toEqual(result2.x);
-      expect(result1.yPdf).toEqual(result2.yPdf);
       expect(result1.yCdf).toEqual(result2.yCdf);
+      expect(result1.samples).toEqual(result2.samples);
     });
   });
 
@@ -121,7 +130,6 @@ describe('computeAnnualLoss', () => {
       });
       expect(result).not.toBeNull();
       expect(result.x.length).toBeGreaterThan(0);
-      expect(result.yPdf.length).toBe(result.x.length);
       expect(result.yCdf.length).toBe(result.x.length);
     });
 
@@ -213,21 +221,4 @@ describe('computeAnnualLoss', () => {
     });
   });
 
-  describe('KDE PDF normalization', () => {
-    it('trapezoidal integral of PDF ≈ 1', () => {
-      const result = computeAnnualLoss(validParams);
-      expect(result).not.toBeNull();
-
-      // Trapezoidal integration over the returned x/yPdf arrays
-      let integral = 0;
-      for (let i = 0; i < result.x.length - 1; i++) {
-        const dx = result.x[i + 1] - result.x[i];
-        integral += 0.5 * (result.yPdf[i] + result.yPdf[i + 1]) * dx;
-      }
-
-      // Generous bounds: the returned chart domain excludes some tail mass.
-      expect(integral).toBeGreaterThan(0.8);
-      expect(integral).toBeLessThan(1.2);
-    });
-  });
 });
