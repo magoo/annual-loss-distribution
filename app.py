@@ -705,6 +705,12 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
+def _(mo):
+    get_active_workflow_tab, set_active_workflow_tab = mo.state("1 · Frequency")
+    return get_active_workflow_tab, set_active_workflow_tab
+
+
+@app.cell(hide_code=True)
 def _(model_errors, mo):
     calculate_button = mo.ui.run_button(
         kind="success",
@@ -906,10 +912,12 @@ def _(
     cost_section,
     focus_percentile,
     frequency_section,
+    get_active_workflow_tab,
     mo,
     model_errors,
     preview_errors,
     scenario_section,
+    set_active_workflow_tab,
 ):
     feedback = []
     all_errors = list(model_errors) + list(preview_errors)
@@ -931,15 +939,20 @@ def _(
         wrap=True,
         gap=2,
     )
+    _tab_contents = {
+        "1 · Frequency": frequency_section,
+        "2 · Cost": cost_section,
+        "3 · Calculate": calculate_section,
+    }
+    _active_tab = get_active_workflow_tab()
+    if _active_tab not in _tab_contents:
+        _active_tab = "1 · Frequency"
     workflow = mo.ui.tabs(
-        {
-            "1 · Frequency": frequency_section,
-            "2 · Cost": cost_section,
-            "3 · Calculate": calculate_section,
-        },
-        value="1 · Frequency",
+        _tab_contents,
+        value=_active_tab,
         lazy=False,
         label="Annual loss workflow",
+        on_change=set_active_workflow_tab,
     )
     mo.vstack(
         [global_controls, *feedback, workflow, scenario_section],
