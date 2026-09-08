@@ -8,7 +8,6 @@ from annual_loss import (
     SimulationConfig,
     SimulationSafetyError,
     simulate_annual_loss,
-    simulate_hybrid,
     simulate_scenarios,
 )
 
@@ -37,6 +36,25 @@ MIXED_COST_SCENARIOS = [
         "frequency_params": {"odds": 4},
         "cost_dist_type": "pert",
         "cost_params": {"min": 5_000, "mode": 20_000, "max": 250_000},
+    },
+]
+
+PAIRED_SCENARIOS = [
+    {
+        "id": 1,
+        "name": "Low cost",
+        "frequency_method": "odds",
+        "frequency_params": {"odds": 1},
+        "cost_dist_type": "pert",
+        "cost_params": {"min": 100, "mode": 100.5, "max": 101},
+    },
+    {
+        "id": 2,
+        "name": "High cost",
+        "frequency_method": "odds",
+        "frequency_params": {"odds": 1},
+        "cost_dist_type": "pert",
+        "cost_params": {"min": 1_000, "mode": 1_000.5, "max": 1_001},
     },
 ]
 
@@ -173,60 +191,56 @@ def test_annual_loss_rejects_invalid_and_explosive_models_before_sampling() -> N
 
 def test_scenario_frequency_is_seeded_integer_output() -> None:
     config = SimulationConfig(seed=99, rounds=2_000)
-    first = simulate_scenarios(
-        [ODDS_SCENARIO],
-        "frequency",
-        cost_scenario_mode=False,
-        config=config,
-    )
-    second = simulate_scenarios(
-        [ODDS_SCENARIO],
-        "frequency",
-        cost_scenario_mode=False,
-        config=config,
-    )
+    first = simulate_scenarios([ODDS_SCENARIO], "frequency", config=config)
+    second = simulate_scenarios([ODDS_SCENARIO], "frequency", config=config)
 
     assert_valid_result(first, rounds=2_000, kind=Section.FREQUENCY)
     np.testing.assert_array_equal(first.samples, second.samples)
     assert np.all(first.samples == np.floor(first.samples))
     assert np.mean(first.samples) == pytest.approx(0.5, abs=0.04)
+    assert first.total_event_draws == int(np.sum(first.samples))
 
 
-def test_hybrid_single_frequency_with_scenario_costs() -> None:
-    result = simulate_hybrid(
-        MIXED_COST_SCENARIOS,
-        "loss",
-        frequency_scenario_mode=False,
-        cost_scenario_mode=True,
-        frequency_dist_type="lognormal",
-        frequency_params={"p50": 2, "p95": 8},
-        config=SimulationConfig(rounds=1_000),
-    )
+def test_scenario_loss_is_seeded_and_reproducible() -> None:
+    config = SimulationConfig(seed=17, rounds=1_000)
+    first = simulate_scenarios(MIXED_COST_SCENARIOS, config=config)
+    second = simulate_scenarios(MIXED_COST_SCENARIOS, config=config)
+
+    assert_valid_result(first, rounds=1_000, kind=Section.LOSS)
+    assert first.seed == 17
+    assert first.samples.size == first.num_rounds
+    assert first.total_event_draws > 0
+    np.testing.assert_array_equal(first.samples, second.samples)
+    np.testing.assert_array_equal(first.x, second.x)
+    np.testing.assert_array_equal(first.y_cdf, second.y_cdf)
+
+
+def test_each_scenario_frequency_uses_its_paired_cost_model() -> None:
+    result = simulate_scenarios(PAIRED_SCENARIOS, config=SimulationConfig(rounds=1_000))
 
     assert_valid_result(result, rounds=1_000, kind=Section.LOSS)
-    assert np.any(result.samples > 0)
+    assert result.total_event_draws == 2_000
+    assert np.all((result.samples >= 1_100) & (result.samples <= 1_102))
 
 
-def test_hybrid_scenario_frequency_with_single_cost_distribution() -> None:
+def test_scenario_cost_output_contains_each_rows_incident_costs() -> None:
     result = simulate_scenarios(
-        [ODDS_SCENARIO],
-        "cost",
-        frequency_scenario_mode=True,
-        cost_scenario_mode=False,
-        cost_dist_type="pert",
-        cost_params={"min": 1_000, "mode": 10_000, "max": 50_000},
-        config=SimulationConfig(rounds=1_000),
+        PAIRED_SCENARIOS,
+        Section.COST,
+        config=SimulationConfig(seed=42, rounds=1_000),
     )
 
     assert_valid_result(result, rounds=1_000, kind=Section.COST)
+    assert result.total_event_draws == 2_000
     assert result.samples.size == result.total_event_draws
-    assert np.min(result.samples) >= 1_000
-    assert np.max(result.samples) <= 50_000
+    assert np.all((result.samples[:1_000] >= 100) & (result.samples[:1_000] <= 101))
+    assert np.all((result.samples[1_000:] >= 1_000) & (result.samples[1_000:] <= 1_001))
 
 
 def test_scenario_frequency_ignores_invalid_costs_when_not_needed() -> None:
     frequency_only = {
         **ODDS_SCENARIO,
+        "cost_dist_type": "unsupported",
         "cost_params": {"p50": 10_000, "p95": 1_000},
     }
     result = simulate_scenarios(
@@ -238,18 +252,32 @@ def test_scenario_frequency_ignores_invalid_costs_when_not_needed() -> None:
     assert_valid_result(result, rounds=1_000, kind=Section.FREQUENCY)
 
 
-def test_full_scenario_mode_uses_each_scenarios_cost_model() -> None:
-    result = simulate_scenarios(
-        MIXED_COST_SCENARIOS,
-        "loss",
-        config=SimulationConfig(seed=17, rounds=1_000),
-    )
+@pytest.mark.parametrize("section", [Section.COST, Section.LOSS])
+def test_cost_and_loss_validate_every_scenario_cost(section) -> None:
+    invalid_second_cost = [
+        ODDS_SCENARIO,
+        {
+            **MIXED_COST_SCENARIOS[1],
+            "cost_params": {"min": 5_000, "mode": 20_000, "max": 10_000},
+        },
+    ]
 
-    assert_valid_result(result, rounds=1_000, kind=Section.LOSS)
-    assert result.total_event_draws > 0
+    with pytest.raises(ParameterValidationError, match="max"):
+        simulate_scenarios(invalid_second_cost, section)
 
 
-def test_scenario_mode_rejects_empty_or_invalid_scenarios() -> None:
+@pytest.mark.parametrize("section", [Section.COST, Section.LOSS])
+def test_cost_and_loss_reject_unsupported_scenario_cost_types(section) -> None:
+    invalid_second_type = [
+        ODDS_SCENARIO,
+        {**MIXED_COST_SCENARIOS[1], "cost_dist_type": "unsupported"},
+    ]
+
+    with pytest.raises(ValueError, match="unsupported distribution type"):
+        simulate_scenarios(invalid_second_type, section)
+
+
+def test_scenario_simulation_rejects_empty_or_invalid_models() -> None:
     with pytest.raises(AnnualLossError, match="at least one"):
         simulate_scenarios([], "loss")
 
@@ -257,11 +285,47 @@ def test_scenario_mode_rejects_empty_or_invalid_scenarios() -> None:
     with pytest.raises(ParameterValidationError):
         simulate_scenarios([invalid], "loss")
 
+    unknown_method = {**ODDS_SCENARIO, "frequency_method": "unsupported"}
+    with pytest.raises(ValueError, match="unsupported frequency method"):
+        simulate_scenarios([unknown_method], "loss")
 
-def test_scenario_rounds_are_capped_at_ten_thousand() -> None:
+
+@pytest.mark.parametrize("section", [None, "", "hybrid", object()])
+def test_scenario_simulation_rejects_invalid_sections(section) -> None:
+    with pytest.raises(ValueError, match="unsupported section"):
+        simulate_scenarios([ODDS_SCENARIO], section)
+
+
+@pytest.mark.parametrize(
+    "scenarios",
+    [None, "scenario", b"scenario", ODDS_SCENARIO, [42]],
+)
+def test_scenario_simulation_rejects_invalid_inputs(scenarios) -> None:
+    with pytest.raises(TypeError, match="scenario"):
+        simulate_scenarios(scenarios)
+
+
+def test_removed_hybrid_arguments_are_not_accepted() -> None:
+    with pytest.raises(TypeError, match="unexpected keyword"):
+        simulate_scenarios([ODDS_SCENARIO], frequency_scenario_mode=True)
+
+
+def test_scenario_aggregate_workload_is_bounded_before_sampling() -> None:
+    high_frequency_rows = [
+        {
+            **ODDS_SCENARIO,
+            "id": index,
+            "frequency_method": "pert",
+            "frequency_params": {"min": 799, "mode": 800, "max": 801},
+        }
+        for index in (1, 2)
+    ]
+
+    with pytest.raises(SimulationSafetyError, match="maximum event-draw workload"):
+        simulate_scenarios(high_frequency_rows, "loss")
+
+
+@pytest.mark.parametrize("rounds", [999, 10_001])
+def test_scenario_rounds_stay_within_safe_bounds(rounds) -> None:
     with pytest.raises(SimulationSafetyError, match="rounds"):
-        simulate_scenarios(
-            [ODDS_SCENARIO],
-            "frequency",
-            config=SimulationConfig(rounds=10_001),
-        )
+        simulate_scenarios([ODDS_SCENARIO], "frequency", config=SimulationConfig(rounds=rounds))

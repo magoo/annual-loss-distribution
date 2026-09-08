@@ -30,7 +30,7 @@ from .models import (
     SimulationConfig,
     SimulationResult,
 )
-from .simulation import simulate_annual_loss, simulate_hybrid, simulate_scenarios
+from .simulation import simulate_annual_loss, simulate_scenarios
 from .statistics import (
     average_panel_params,
     confidence_interval,
@@ -91,7 +91,6 @@ __all__ = [
     "require_valid_params",
     "sample_distribution",
     "simulate_annual_loss",
-    "simulate_hybrid",
     "simulate_scenarios",
     "validate_params",
 ]

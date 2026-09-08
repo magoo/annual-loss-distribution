@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import marimo as mo
 import numpy as np
 import pytest
 from plotly import graph_objects as go
@@ -69,6 +70,21 @@ def test_analytical_cdf_uses_cumulative_values_and_percentage_axis() -> None:
     assert figure.layout.yaxis.tickformat == ".0%"
 
 
+def test_chart_layout_uses_compact_editorial_theme() -> None:
+    figure = build_distribution_figure(
+        curve(), view="pdf", section=Section.COST, focus_percentile=100
+    )
+
+    assert figure.layout.autosize is True
+    assert figure.layout.height == 360
+    assert figure.layout.margin.to_plotly_json() == {"t": 48, "r": 16, "b": 52, "l": 56}
+    assert figure.layout.font.family.startswith("ui-sans-serif")
+    assert figure.layout.title.font.size == 18
+    assert figure.layout.xaxis.gridcolor == "rgba(100, 116, 139, 0.16)"
+    assert figure.layout.yaxis.zerolinecolor == "rgba(100, 116, 139, 0.28)"
+    assert figure.data[0].line.color == "#d84b73"
+
+
 def test_frequency_pdf_counts_each_integer_as_a_bar() -> None:
     simulation = result([0, 1, 1, 2, 2, 2], Section.FREQUENCY)
 
@@ -80,6 +96,8 @@ def test_frequency_pdf_counts_each_integer_as_a_bar() -> None:
     assert figure.data[0].width == 0.8
     assert figure.layout.xaxis.type == "linear"
     assert figure.layout.yaxis.title.text == "Simulated Outcomes"
+    assert figure.data[0].marker.color == "rgba(216, 75, 115, 0.42)"
+    assert figure.data[0].marker.line.width == 0.8
     assert "0 incidents" in figure.layout.annotations[0].text
 
 
@@ -116,6 +134,70 @@ def test_dollar_pdf_uses_log_spaced_bars_and_preserves_positive_counts() -> None
     assert figure.layout.xaxis.title.text == "Annual Loss"
     assert "9.1% of simulated outcomes are $0" == figure.layout.annotations[0].text
     assert "chance of losing more" in trace.hovertemplate
+
+
+def test_dollar_histogram_selection_is_safe_for_marimo() -> None:
+    samples = np.geomspace(100, 1_000_000, 1_000).tolist()
+    simulation = result([0] * 100 + samples, Section.LOSS)
+    figure = build_distribution_figure(
+        simulation,
+        view="pdf",
+        use_dollars=True,
+        focus_percentile=99.5,
+    )
+    trace = figure.data[0]
+
+    assert isinstance(trace.customdata[0], list)
+    assert len(trace.customdata[0]) == 3
+    metadata = np.asarray(trace.customdata, dtype=np.float64)
+    np.testing.assert_allclose(metadata[:, 0] + metadata[:, 1], 1.0)
+    np.testing.assert_allclose(metadata[:, 2], np.asarray(trace.y) / simulation.samples.size)
+
+    plot = mo.ui.plotly(figure)
+    selected = plot._convert_value(
+        {
+            "points": [],
+            "indices": [],
+            "range": {
+                "x": [float(np.min(trace.x)), float(np.max(trace.x))],
+                "y": [0, int(np.max(trace.y))],
+            },
+        }
+    )
+
+    assert len(selected) == len(trace.x)
+    assert all(isinstance(point["customdata"], list) for point in selected)
+
+
+@pytest.mark.parametrize(
+    ("samples", "section", "use_dollars"),
+    [
+        ([0, 1, 1, 2, 2, 2], Section.FREQUENCY, False),
+        ([0, 0, 0, 0], Section.LOSS, True),
+    ],
+)
+def test_other_bar_selections_are_safe_for_marimo(
+    samples: list[float], section: Section, use_dollars: bool
+) -> None:
+    figure = build_distribution_figure(
+        result(samples, section), view="pdf", use_dollars=use_dollars
+    )
+    trace = figure.data[0]
+    plot = mo.ui.plotly(figure)
+
+    selected = plot._convert_value(
+        {
+            "points": [],
+            "indices": [],
+            "range": {
+                "x": [float(np.min(trace.x)), float(np.max(trace.x))],
+                "y": [0, int(np.max(trace.y))],
+            },
+        }
+    )
+
+    assert selected
+    assert all(isinstance(point["customdata"], list) for point in selected)
 
 
 def test_dollar_cdf_omits_zero_on_log_axis_but_annotates_its_mass() -> None:

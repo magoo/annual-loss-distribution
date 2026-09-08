@@ -273,21 +273,16 @@ def _scenario_names(scenarios: tuple[object, ...]) -> str:
 
 def simulation_intro(
     *,
-    frequency_scenario_mode: bool = False,
-    cost_scenario_mode: bool = False,
+    scenario_mode: bool = False,
 ) -> str:
     """Describe the overall Monte Carlo mode in executive language."""
 
-    if frequency_scenario_mode and cost_scenario_mode:
+    if scenario_mode:
         return (
             "This executive summary reflects a scenario-based Monte Carlo model that "
-            "simulates up to 10,000 potential years of loss outcomes."
-        )
-    if frequency_scenario_mode or cost_scenario_mode:
-        return (
-            "This executive summary reflects a hybrid Monte Carlo model that simulates "
-            "up to 10,000 potential years and combines scenario-driven inputs with "
-            "distribution-driven inputs."
+            "simulates up to 10,000 potential years. Each threat-scenario row pairs its "
+            "incident-frequency model with its per-incident cost distribution, and losses "
+            "from all scenario rows are summed into each annual loss outcome."
         )
     return (
         "This executive summary reflects a Monte Carlo model of up to 100,000 potential "
@@ -298,8 +293,7 @@ def simulation_intro(
 
 def simulation_setup_bullets(
     *,
-    frequency_scenario_mode: bool = False,
-    cost_scenario_mode: bool = False,
+    scenario_mode: bool = False,
     scenarios: Iterable[object] | None = None,
 ) -> tuple[str, ...]:
     """Describe the simulation method and any named scenario set."""
@@ -308,22 +302,12 @@ def simulation_setup_bullets(
     count_label = _scenario_count_label(scenario_items)
     names = _scenario_names(scenario_items)
 
-    if frequency_scenario_mode and cost_scenario_mode:
+    if scenario_mode:
         return (
             "Simulation mode: Up to 10,000-round scenario-based Monte Carlo",
             f"Scenario set: {count_label} ({names})",
-        )
-    if frequency_scenario_mode:
-        return (
-            "Simulation mode: Up to 10,000-round hybrid Monte Carlo",
-            f"Scenario set: Frequency sampled from {count_label} ({names})",
-            "Cost modeling: Distribution-based",
-        )
-    if cost_scenario_mode:
-        return (
-            "Simulation mode: Up to 10,000-round hybrid Monte Carlo",
-            f"Scenario set: Cost sampled from {count_label} ({names})",
-            "Frequency modeling: Distribution-based",
+            "Method: Each scenario row pairs one frequency model with one cost distribution; "
+            "losses from all scenario rows are summed for each simulated year",
         )
     return (
         "Simulation mode: Up to 100,000-round distribution-based Monte Carlo",
@@ -418,8 +402,7 @@ def build_executive_summary(
     cost_result: object | None = None,
     loss_result: object | None = None,
     confidence_level: float = 0.90,
-    frequency_scenario_mode: bool = False,
-    cost_scenario_mode: bool = False,
+    scenario_mode: bool = False,
     scenarios: Iterable[object] | None = None,
     frequency_panel_active: bool | None = None,
     cost_panel_active: bool | None = None,
@@ -437,10 +420,7 @@ def build_executive_summary(
     scenario_items = _as_tuple(scenarios)
     frequency_panel_items = _as_tuple(frequency_panelists)
     cost_panel_items = _as_tuple(cost_panelists)
-    intro = simulation_intro(
-        frequency_scenario_mode=frequency_scenario_mode,
-        cost_scenario_mode=cost_scenario_mode,
-    )
+    intro = simulation_intro(scenario_mode=scenario_mode)
     confidence_lines = confidence_narrative(
         frequency_result=frequency_result,
         cost_result=cost_result,
@@ -452,20 +432,24 @@ def build_executive_summary(
         ReportSection(
             title="Simulation Setup",
             bullets=simulation_setup_bullets(
-                frequency_scenario_mode=frequency_scenario_mode,
-                cost_scenario_mode=cost_scenario_mode,
+                scenario_mode=scenario_mode,
                 scenarios=scenario_items,
             ),
         )
     ]
 
-    frequency_bullets = [_input_source_bullet(frequency_panel_active, frequency_panel_items)]
-    if frequency_scenario_mode:
-        frequency_bullets.append(
-            "Frequency method: Scenario-based sampling from "
-            f"{_scenario_count_label(scenario_items)}"
+    if scenario_mode:
+        scenario_source = (
+            f"Input source: {_scenario_count_label(scenario_items)} with paired frequency "
+            "and cost estimates"
         )
+        frequency_bullets = [
+            scenario_source,
+            "Frequency method: Configured per scenario row and evaluated with that row's "
+            "cost distribution",
+        ]
     else:
+        frequency_bullets = [_input_source_bullet(frequency_panel_active, frequency_panel_items)]
         frequency_bullets.extend(
             _distribution_bullets(
                 frequency_params,
@@ -475,12 +459,14 @@ def build_executive_summary(
         )
     sections.append(ReportSection("Frequency Inputs", tuple(frequency_bullets)))
 
-    cost_bullets = [_input_source_bullet(cost_panel_active, cost_panel_items)]
-    if cost_scenario_mode:
-        cost_bullets.append(
-            f"Cost method: Scenario-based sampling from {_scenario_count_label(scenario_items)}"
-        )
+    if scenario_mode:
+        cost_bullets = [
+            scenario_source,
+            "Cost method: Configured per scenario row and evaluated with that row's "
+            "frequency model",
+        ]
     else:
+        cost_bullets = [_input_source_bullet(cost_panel_active, cost_panel_items)]
         cost_bullets.extend(_distribution_bullets(cost_params, cost_distribution, use_dollars=True))
     sections.append(ReportSection("Cost Inputs", tuple(cost_bullets)))
 

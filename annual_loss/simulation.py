@@ -13,7 +13,7 @@ from .distributions import (
     frequency_work_rate,
     sample_distribution,
 )
-from .exceptions import AnnualLossError, ParameterValidationError, SimulationSafetyError
+from .exceptions import AnnualLossError, SimulationSafetyError
 from .models import (
     DistributionType,
     FrequencyMethod,
@@ -93,72 +93,46 @@ def simulate_scenarios(
     scenarios: Sequence[Scenario | Mapping[str, Any]] | Iterable[Scenario | Mapping[str, Any]],
     section: Section | str = Section.LOSS,
     *,
-    frequency_scenario_mode: bool = True,
-    cost_scenario_mode: bool = True,
-    frequency_dist_type: DistributionType | str = DistributionType.LOGNORMAL,
-    frequency_params: ParamsLike | None = None,
-    cost_dist_type: DistributionType | str = DistributionType.LOGNORMAL,
-    cost_params: ParamsLike | None = None,
     config: SimulationConfig | None = None,
 ) -> SimulationResult:
-    """Run scenario-only or hybrid frequency/cost simulation.
+    """Simulate paired scenario rows and aggregate their yearly outcomes.
 
-    When frequency is distribution-based but costs are scenario-based, each
-    incident selects a scenario uniformly, preserving the source behavior.
-    When scenario frequencies are active, each incident retains its scenario's
-    cost distribution.
+    Each scenario's frequency generates incidents from that same row's cost
+    model. Frequency results contain aggregate annual incident counts, cost
+    results contain all sampled incident costs, and loss results contain the
+    sum of every scenario's loss in each simulated year.
     """
 
     section_value = coerce_section(section)
     scenario_list = _coerce_scenarios(scenarios)
     if not scenario_list:
         raise AnnualLossError("at least one scenario is required")
-    if not isinstance(frequency_scenario_mode, bool) or not isinstance(cost_scenario_mode, bool):
-        raise TypeError("scenario mode flags must be booleans")
 
     need_cost = section_value is not Section.FREQUENCY
-    normalized_frequency: ParamsLike | None = None
-    normalized_cost: ParamsLike | None = None
-    frequency_type: DistributionType | None = None
-    cost_type: DistributionType | None = None
-
     scenario_frequency_methods: list[FrequencyMethod] = []
     scenario_frequency_params: list[ParamsLike] = []
-    if frequency_scenario_mode:
-        work_rate = 0.0
-        for scenario in scenario_list:
-            method = _coerce_frequency_method(scenario.frequency_method)
-            normalized = require_valid_params(Section.FREQUENCY, method, scenario.frequency_params)
-            scenario_frequency_methods.append(method)
-            scenario_frequency_params.append(normalized)
-            if method is FrequencyMethod.ODDS:
-                work_rate += 1.0 / float(normalized.odds)
-            else:
-                work_rate += frequency_work_rate(DistributionType(method.value), normalized)
-    else:
-        if frequency_params is None:
-            raise ParameterValidationError({"frequency_params": "Required"})
-        frequency_type = coerce_distribution_type(frequency_dist_type)
-        normalized_frequency = require_valid_params(
-            Section.FREQUENCY, frequency_type, frequency_params
-        )
-        work_rate = frequency_work_rate(frequency_type, normalized_frequency)
-
     scenario_cost_types: list[DistributionType] = []
     scenario_cost_params: list[ParamsLike] = []
-    if need_cost and cost_scenario_mode:
-        for scenario in scenario_list:
-            scenario_cost_type = coerce_distribution_type(scenario.cost_dist_type)
-            scenario_cost_param = require_valid_params(
-                Section.COST, scenario_cost_type, scenario.cost_params
-            )
-            scenario_cost_types.append(scenario_cost_type)
-            scenario_cost_params.append(scenario_cost_param)
-    elif need_cost:
-        if cost_params is None:
-            raise ParameterValidationError({"cost_params": "Required"})
-        cost_type = coerce_distribution_type(cost_dist_type)
-        normalized_cost = require_valid_params(Section.COST, cost_type, cost_params)
+    work_rate = 0.0
+    for scenario in scenario_list:
+        method = _coerce_frequency_method(scenario.frequency_method)
+        normalized_frequency = require_valid_params(
+            Section.FREQUENCY, method, scenario.frequency_params
+        )
+        scenario_frequency_methods.append(method)
+        scenario_frequency_params.append(normalized_frequency)
+        if method is FrequencyMethod.ODDS:
+            work_rate += 1.0 / float(normalized_frequency.odds)
+        else:
+            work_rate += frequency_work_rate(DistributionType(method.value), normalized_frequency)
+
+        # Cost fields are deliberately untouched for frequency-only results so
+        # an in-progress cost form cannot prevent frequency exploration.
+        if need_cost:
+            cost_type = coerce_distribution_type(scenario.cost_dist_type)
+            normalized_cost = require_valid_params(Section.COST, cost_type, scenario.cost_params)
+            scenario_cost_types.append(cost_type)
+            scenario_cost_params.append(normalized_cost)
 
     resolved_config = config or SimulationConfig()
     rounds, seed = _resolve_workload(
@@ -170,25 +144,17 @@ def simulate_scenarios(
     )
     rng = np.random.default_rng(seed)
 
-    if frequency_scenario_mode:
-        counts_by_scenario = []
-        for method, params in zip(
-            scenario_frequency_methods, scenario_frequency_params, strict=True
-        ):
-            if method is FrequencyMethod.ODDS:
-                probability = 1.0 / float(params.odds)
-                counts = (rng.random(rounds) < probability).astype(np.int64)
-            else:
-                raw = sample_distribution(DistributionType(method.value), params, rounds, rng)
-                counts = _round_event_counts(raw)
-            counts_by_scenario.append(counts)
-        total_counts = np.sum(np.stack(counts_by_scenario), axis=0, dtype=np.int64)
-        _check_per_round_counts(total_counts)
-    else:
-        assert frequency_type is not None and normalized_frequency is not None
-        raw = sample_distribution(frequency_type, normalized_frequency, rounds, rng)
-        total_counts = _round_event_counts(raw)
-        counts_by_scenario = []
+    counts_by_scenario: list[NDArray[np.int64]] = []
+    for method, params in zip(scenario_frequency_methods, scenario_frequency_params, strict=True):
+        if method is FrequencyMethod.ODDS:
+            probability = 1.0 / float(params.odds)
+            counts = (rng.random(rounds) < probability).astype(np.int64)
+        else:
+            raw = sample_distribution(DistributionType(method.value), params, rounds, rng)
+            counts = _round_event_counts(raw)
+        counts_by_scenario.append(counts)
+    total_counts = np.sum(np.stack(counts_by_scenario), axis=0, dtype=np.int64)
+    _check_per_round_counts(total_counts)
 
     total_events = int(np.sum(total_counts, dtype=np.int64))
     if need_cost and total_events > MAX_TOTAL_EVENT_DRAWS:
@@ -208,41 +174,16 @@ def simulate_scenarios(
     annual_losses = np.zeros(rounds, dtype=np.float64)
     cost_chunks: list[NDArray[np.float64]] = []
 
-    if frequency_scenario_mode and cost_scenario_mode:
-        for counts, scenario_cost_type, scenario_cost_param in zip(
-            counts_by_scenario,
-            scenario_cost_types,
-            scenario_cost_params,
-            strict=True,
-        ):
-            scenario_events = int(np.sum(counts, dtype=np.int64))
-            costs = sample_distribution(
-                scenario_cost_type, scenario_cost_param, scenario_events, rng
-            )
-            cost_chunks.append(costs)
-            annual_losses += _sum_costs_by_year(costs, counts)
-    elif frequency_scenario_mode:
-        assert cost_type is not None and normalized_cost is not None
-        costs = sample_distribution(cost_type, normalized_cost, total_events, rng)
+    for counts, scenario_cost_type, scenario_cost_param in zip(
+        counts_by_scenario,
+        scenario_cost_types,
+        scenario_cost_params,
+        strict=True,
+    ):
+        scenario_events = int(np.sum(counts, dtype=np.int64))
+        costs = sample_distribution(scenario_cost_type, scenario_cost_param, scenario_events, rng)
         cost_chunks.append(costs)
-        annual_losses = _sum_costs_by_year(costs, total_counts)
-    elif cost_scenario_mode:
-        costs = np.empty(total_events, dtype=np.float64)
-        scenario_choices = rng.integers(0, len(scenario_list), size=total_events, dtype=np.int64)
-        for index, (scenario_cost_type, scenario_cost_param) in enumerate(
-            zip(scenario_cost_types, scenario_cost_params, strict=True)
-        ):
-            selected = np.flatnonzero(scenario_choices == index)
-            costs[selected] = sample_distribution(
-                scenario_cost_type, scenario_cost_param, selected.size, rng
-            )
-        cost_chunks.append(costs)
-        annual_losses = _sum_costs_by_year(costs, total_counts)
-    else:
-        assert cost_type is not None and normalized_cost is not None
-        costs = sample_distribution(cost_type, normalized_cost, total_events, rng)
-        cost_chunks.append(costs)
-        annual_losses = _sum_costs_by_year(costs, total_counts)
+        annual_losses += _sum_costs_by_year(costs, counts)
 
     if not np.all(np.isfinite(annual_losses)):
         raise FloatingPointError("annual loss aggregation produced a non-finite value")
@@ -261,12 +202,6 @@ def simulate_scenarios(
         total_events=total_events,
         kind=section_value,
     )
-
-
-def simulate_hybrid(*args: Any, **kwargs: Any) -> SimulationResult:
-    """Alias with an explicit name for scenario/distribution hybrid runs."""
-
-    return simulate_scenarios(*args, **kwargs)
 
 
 def _coerce_scenarios(

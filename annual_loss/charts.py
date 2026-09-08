@@ -20,8 +20,10 @@ from .statistics import interpolate_percentile
 
 ChartView: TypeAlias = Literal["pdf", "cdf"]
 
-_PDF_COLOR = "#f72585"
-_CDF_COLOR = "#4361ee"
+_PDF_COLOR = "#d84b73"
+_CDF_COLOR = "#4f5fbf"
+_GRID_COLOR = "rgba(100, 116, 139, 0.16)"
+_ZERO_LINE_COLOR = "rgba(100, 116, 139, 0.28)"
 _SECTION_LABELS = {
     Section.FREQUENCY: ("Frequency Distribution", "Incidents per Year"),
     Section.COST: ("Cost Distribution", "Cost per Incident"),
@@ -158,7 +160,7 @@ def _analytical_figure(
 ) -> go.Figure:
     cdf = np.asarray(curve.cdf, dtype=np.float64)
     y = np.asarray(curve.pdf if view == "pdf" else curve.cdf, dtype=np.float64)
-    customdata = np.column_stack((cdf, 1.0 - cdf))
+    customdata = np.column_stack((cdf, 1.0 - cdf)).tolist()
     trace = go.Scatter(
         x=np.asarray(curve.x, dtype=np.float64),
         y=y,
@@ -191,7 +193,7 @@ def _simulation_figure(
     if section is Section.FREQUENCY and np.all(samples == np.floor(samples)):
         values, counts = np.unique(samples, return_counts=True)
         cdf_values = _cdf_at(result, values)
-        customdata = np.column_stack((cdf_values, 1.0 - cdf_values, counts / samples.size))
+        customdata = np.column_stack((cdf_values, 1.0 - cdf_values, counts / samples.size)).tolist()
         trace = go.Bar(
             x=values,
             y=counts,
@@ -225,7 +227,7 @@ def _empirical_cdf_figure(
         x = x[visible]
         probabilities = probabilities[visible]
 
-    customdata = np.column_stack((probabilities, 1.0 - probabilities))
+    customdata = np.column_stack((probabilities, 1.0 - probabilities)).tolist()
     trace = go.Scatter(
         x=x,
         y=probabilities,
@@ -263,7 +265,7 @@ def _dollar_histogram_figure(result: SimulationResult, *, section: Section) -> g
             widths = None
 
     cdf_values = _cdf_at(result, values)
-    customdata = np.column_stack((cdf_values, 1.0 - cdf_values, counts / samples.size))
+    customdata = np.column_stack((cdf_values, 1.0 - cdf_values, counts / samples.size)).tolist()
     trace = go.Bar(
         x=values,
         y=counts,
@@ -286,8 +288,8 @@ def _cdf_at(result: SimulationResult, x: np.ndarray) -> np.ndarray:
 
 def _bar_marker() -> dict[str, object]:
     return {
-        "color": "rgba(247, 37, 133, 0.5)",
-        "line": {"color": _PDF_COLOR, "width": 1},
+        "color": "rgba(216, 75, 115, 0.42)",
+        "line": {"color": _PDF_COLOR, "width": 0.8},
     }
 
 
@@ -341,31 +343,44 @@ def _apply_layout(
     tick_format = ",.0f" if use_dollars or section is Section.FREQUENCY else ",.2f"
     figure.update_layout(
         template="plotly_white",
-        title={"text": section_title, "x": 0.01, "xanchor": "left"},
+        autosize=True,
+        height=360,
+        font={
+            "family": "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+            "size": 12,
+        },
+        title={
+            "text": section_title,
+            "x": 0.01,
+            "xanchor": "left",
+            "font": {"size": 18},
+        },
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        margin={"t": 48, "r": 24, "b": 56, "l": 64},
+        margin={"t": 48, "r": 16, "b": 52, "l": 56},
         showlegend=False,
         hovermode="closest",
         bargap=0,
         xaxis={
-            "title": {"text": x_axis_title},
+            "title": {"text": x_axis_title, "font": {"size": 12}, "standoff": 12},
             "type": "log" if log_x_axis else "linear",
             "range": focused_range,
             "tickprefix": "$" if use_dollars else "",
             "tickformat": tick_format,
-            "gridcolor": "#f0f0f0",
-            "zerolinecolor": "#e5e7eb",
+            "gridcolor": _GRID_COLOR,
+            "zerolinecolor": _ZERO_LINE_COLOR,
+            "automargin": True,
         },
         yaxis={
-            "title": {"text": y_axis_title},
+            "title": {"text": y_axis_title, "font": {"size": 12}, "standoff": 10},
             "range": [0, 1.05] if view == "cdf" else None,
             "showticklabels": not (view == "pdf" and isinstance(data, DistributionCurve)),
-            "gridcolor": "#f0f0f0",
-            "zerolinecolor": "#e5e7eb",
+            "gridcolor": _GRID_COLOR,
+            "zerolinecolor": _ZERO_LINE_COLOR,
             "tickformat": ".0%" if view == "cdf" else ",d",
+            "automargin": True,
         },
-        hoverlabel={"bgcolor": "#1a1a2e", "font": {"color": "#ffffff", "size": 13}},
+        hoverlabel={"bgcolor": "#202534", "font": {"color": "#ffffff", "size": 12}},
     )
 
 

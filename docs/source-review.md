@@ -15,9 +15,9 @@ and an executive-readable summary.
 
 ## Feature inventory
 
-The user workflow has three ordered sections: Frequency, Cost, and Calculate. Soft
-workflow gates encourage review in that order while allowing a user to open a later
-step intentionally.
+The user workflow presents three numbered sections in one top-to-bottom page:
+Frequency, Cost, and Calculate. All three remain visible so an analyst can review or
+revise earlier assumptions while progressing through the sequence.
 
 Frequency and Cost each support:
 
@@ -84,23 +84,21 @@ frequency work rate and a target of 750,000 event-cost draws, but never below 1,
 years. The engine rejects a count above 100,000 events in one year or a run above
 1,500,000 total event-cost draws.
 
-### Scenario and hybrid annual loss
+### Scenario annual loss
 
 Scenario simulations target 10,000 years and use the same lower round bound and work
 ceilings when costs are required.
 
-- With scenario frequency and scenario cost, each scenario independently produces
-  its annual count and every event uses that same scenario's cost distribution.
-- With scenario frequency and distribution cost, scenario counts are summed and
-  every realized event uses the shared cost distribution.
-- With distribution frequency and scenario cost, a scenario is selected uniformly
-  for each realized event and its cost distribution is sampled.
+- Each scenario independently produces its annual count, and every event uses that
+  same row's cost distribution.
+- Losses from every scenario row are summed to produce each simulated year's total.
 - `1 in N years` is a Bernoulli trial with annual probability `1/N`; distribution
   frequencies are rounded to non-negative integer counts.
 
-The upstream simulation module already implements these hybrid combinations, but
-the Svelte application has one global scenario-mode flag. Consequently, users can
-only select all-scenario or all-distribution behavior through the UI.
+The upstream simulation module contains hybrid code paths, but the Svelte application
+has one global scenario-mode flag and does not expose those combinations. This port
+keeps that coherent user-facing model: scenario frequency and scenario cost always
+activate together, with no hybrid simulation API.
 
 ### Validation and reproducibility
 
@@ -121,9 +119,11 @@ only select all-scenario or all-distribution behavior through the UI.
 2. Replace jStat and Mulberry32 with SciPy distribution functions and an explicit
    `numpy.random.Generator`. Make the seed and effective round count visible in every
    simulation result.
-3. Expose Frequency and Cost modes independently in Marimo so all four combinations
-   (distribution/distribution, scenario/scenario, and both hybrids) are reachable.
-   Preserve the upstream hybrid sampling behavior described above.
+3. Keep Direct and Panel choices independent, but link Scenario mode across Frequency
+   and Cost. Selecting Threat Scenarios in either section activates both; leaving it
+   restores the other section's last Direct or Panel choice. Pair each scenario row's
+   frequency and cost models and sum their annual losses. Do not expose ambiguous
+   hybrid combinations.
 4. Keep panel aggregation intentionally simple: arithmetic means of elicited fields
    drive the fitted model, while analytics use sample standard deviation. This is
    parameter aggregation, not mathematical pooling of expert distributions.
@@ -142,8 +142,11 @@ only select all-scenario or all-distribution behavior through the UI.
   dependencies.
 - Keep trusted calculations in a normal `annual_loss` package so unit tests do not
   depend on notebook execution or browser state.
-- Use Marimo controls and forms for distribution parameters, mode choices, scenario
-  rows, panel rows, chart options, and calculation submission. Let dataflow update
+- Use Marimo controls and forms for distribution parameters, mode choices,
+  method-aware scenario editing, panelists, chart options, and calculation
+  submission. Scenario and panelist rows use stable IDs and remain visible together
+  in expanded vertical lists. Each form reveals only the parameters used by its
+  selected method or distribution while retaining hidden values. Let dataflow update
   inexpensive previews and narrative outputs.
 - Treat the Calculate button as a snapshot boundary: validate current UI values,
   create immutable model inputs, run with an explicit seed, and retain those results
@@ -156,9 +159,9 @@ only select all-scenario or all-distribution behavior through the UI.
 Tests should cover exact fitting formulas; SciPy quantiles; PERT support; validation;
 formatting; empirical CDF compression and monotonicity; percentile interpolation;
 modeled ranges; report content; fixed-seed determinism; finite, non-negative samples;
-independent event costs; zero-event years; all distribution pairings; all scenario
-and hybrid combinations; panel averages and sample standard deviations; adaptive
-round counts; and each workload rejection boundary.
+independent event costs; zero-event years; all distribution pairings; paired scenario
+aggregation; linked mode transitions; panel add/delete state, averages, and sample
+standard deviations; adaptive round counts; and each workload rejection boundary.
 
 Acceptance is based on exact deterministic assertions where appropriate and
 fixed-seed statistical tolerances for sampled moments and quantiles. CI also runs

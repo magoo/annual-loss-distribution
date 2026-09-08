@@ -134,44 +134,61 @@ def test_scenario_summary_names_scenarios_and_uses_scenario_input_methods() -> N
         {"name": " Vendor\n outage "},
     )
     summary = build_executive_summary(
-        frequency_scenario_mode=True,
-        cost_scenario_mode=True,
+        scenario_mode=True,
         scenarios=(scenario for scenario in scenarios),
     )
 
     assert "scenario-based Monte Carlo" in summary.intro
+    assert "Each threat-scenario row pairs" in summary.intro
+    assert "summed into each annual loss outcome" in summary.intro
     assert section(summary, "Simulation Setup") == (
         "Simulation mode: Up to 10,000-round scenario-based Monte Carlo",
         "Scenario set: 2 threat scenarios (Ransomware, Vendor outage)",
+        "Method: Each scenario row pairs one frequency model with one cost distribution; "
+        "losses from all scenario rows are summed for each simulated year",
     )
-    assert "Frequency method: Scenario-based sampling from 2 threat scenarios" in section(
-        summary, "Frequency Inputs"
+    assert section(summary, "Frequency Inputs") == (
+        "Input source: 2 threat scenarios with paired frequency and cost estimates",
+        "Frequency method: Configured per scenario row and evaluated with that row's "
+        "cost distribution",
     )
-    assert "Cost method: Scenario-based sampling from 2 threat scenarios" in section(
-        summary, "Cost Inputs"
+    assert section(summary, "Cost Inputs") == (
+        "Input source: 2 threat scenarios with paired frequency and cost estimates",
+        "Cost method: Configured per scenario row and evaluated with that row's frequency model",
     )
 
 
-@pytest.mark.parametrize(
-    ("frequency_scenarios", "cost_scenarios", "expected_detail"),
-    [
-        (True, False, "Cost modeling: Distribution-based"),
-        (False, True, "Frequency modeling: Distribution-based"),
-    ],
-)
-def test_hybrid_setup_explains_which_side_is_distribution_based(
-    frequency_scenarios: bool,
-    cost_scenarios: bool,
-    expected_detail: str,
-) -> None:
+def test_scenario_setup_uses_only_the_paired_scenario_contract() -> None:
     bullets = simulation_setup_bullets(
-        frequency_scenario_mode=frequency_scenarios,
-        cost_scenario_mode=cost_scenarios,
+        scenario_mode=True,
         scenarios=[{"name": "Credential theft"}],
     )
 
-    assert bullets[0] == "Simulation mode: Up to 10,000-round hybrid Monte Carlo"
-    assert expected_detail in bullets
+    assert bullets == (
+        "Simulation mode: Up to 10,000-round scenario-based Monte Carlo",
+        "Scenario set: 1 threat scenario (Credential theft)",
+        "Method: Each scenario row pairs one frequency model with one cost distribution; "
+        "losses from all scenario rows are summed for each simulated year",
+    )
+    assert all("Distribution-based" not in bullet for bullet in bullets)
+
+
+def test_scenario_mode_ignores_direct_and_panel_distribution_narratives() -> None:
+    summary = build_executive_summary(
+        scenario_mode=True,
+        scenarios=[{"name": "Ransomware"}],
+        frequency_params={"p50": 6, "p95": 18},
+        cost_params={"p50": 120_000, "p95": 700_000},
+        frequency_panelists=[{"name": "Alex"}, {"name": "Blair"}],
+        cost_panelists=[{"name": "Casey"}, {"name": "Devon"}],
+    )
+
+    prose = " ".join(
+        bullet for report_section in summary.sections for bullet in report_section.bullets
+    )
+    assert "direct analyst" not in prose
+    assert "panel of" not in prose
+    assert "Distribution: Lognormal" not in prose
 
 
 def test_missing_results_are_explicit_instead_of_fabricating_ranges() -> None:

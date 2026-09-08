@@ -7,11 +7,17 @@ from Svelte/JavaScript to Python and [Marimo](https://marimo.io/).
 
 The application helps analysts:
 
+- Work through three numbered, always-visible sections—Frequency, Cost, and
+  Calculate—in one top-to-bottom page.
 - Model annual incident frequency and per-incident cost with lognormal, modified
   PERT, or Pareto distributions.
-- Build named threat scenarios with independent frequency and cost methods.
+- Add, edit, and remove named threat scenarios in one expanded list, with
+  method-aware frequency and cost forms that show only the inputs each model uses.
+- Use one linked scenario mode: every scenario row pairs its own frequency and cost
+  assumptions, and yearly losses are summed across the scenario set.
 - Combine frequency and cost through seeded Monte Carlo simulation.
-- Aggregate multiple subject-matter-expert estimates in panel mode.
+- Add and delete subject-matter experts in expanded panel lists, aggregate their
+  estimates, and inspect parameter-level panel analytics.
 - Explore PDF/histogram and CDF views, modeled outcome ranges, and a copy-ready
   executive summary.
 
@@ -61,9 +67,11 @@ local and CI environments resolve the same versions.
 - [`AGENTS.md`](AGENTS.md) defines repository-wide working agreements for coding
   agents and engineers.
 
-Marimo's reactive dataflow is used for input previews and presentation. Expensive
-Monte Carlo work is gated by an explicit Calculate/Recalculate action so routine UI
-edits do not continually launch large simulations.
+Marimo's reactive dataflow is used for input previews and presentation. The three
+workflow sections remain visible together so analysts can review or revise earlier
+assumptions without switching views. Expensive Monte Carlo work is gated by an
+explicit Calculate/Recalculate action so routine UI edits do not continually launch
+large simulations.
 
 ## Numerical trust and reproducibility
 
