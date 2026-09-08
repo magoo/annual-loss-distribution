@@ -45,7 +45,8 @@ installs with `uv sync --locked`, so an out-of-date lockfile will fail validatio
   guards directly.
 - For stochastic behavior, use explicit fixed seeds and tolerance-based assertions
   over moments, quantiles, monotonicity, finiteness, and support.
-- Cover distribution-only, scenario-only, and both hybrid frequency/cost paths.
+- Cover distribution mode, linked scenario mode with paired per-row aggregation,
+  and transitions into and out of scenario mode.
 - Include zero-event years, heavy tails, invalid ordering, non-finite values, and
   maximum-workload boundaries where relevant.
 - Verify notebook changes with Marimo's static checker and, for workflow changes, a
@@ -60,6 +61,36 @@ installs with `uv sync --locked`, so an out-of-date lockfile will fail validatio
 - [ ] Documentation is updated where behavior or interfaces changed.
 - [ ] `uv.lock` is current when dependencies changed.
 - [ ] No secrets, local data, caches, or generated editor artifacts are included.
+
+## Privacy review before publication
+
+Keep Marimo's generated `__marimo__/` session output local. It can contain rendered
+inputs and results, and is ignored along with virtual environments, caches, logs,
+and `.env` configuration files. Never force-add these files. Keep confidential risk
+scenarios, real incident data, and exported reports outside the repository; use only
+sanitized examples in source, tests, and documentation. Any `.env.example` must
+contain placeholders only because it is intentionally allowed in Git.
+
+Before staging, inspect `git status --short --untracked-files=all` and `git diff`,
+and read any new files you intend to include. Stage reviewed paths explicitly, then
+inspect `git diff --cached --name-status` and `git diff --cached` before committing.
+Ignore rules do not remove files that are already tracked or present in history.
+
+Before publishing or pushing, scan both the working directory (including untracked
+files) and Git history with a locally installed secret scanner. For example, with
+TruffleHog:
+
+```bash
+trufflehog filesystem --no-verification --no-update .
+trufflehog git --no-verification --no-update "file://$PWD"
+```
+
+These options disable credential verification and update checks. The directory scan
+also examines ignored files, so review findings from installed dependencies and
+generated output as well as project files. Resolve findings before publication and
+ask the file's owner about ambiguous personal or confidential content. Do not paste
+candidate secret values into issues, pull requests, or scan reports. A clean scan
+does not replace reviewing the actual files and commit author information.
 
 ## Reporting issues
 
