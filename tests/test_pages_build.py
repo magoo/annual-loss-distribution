@@ -1,12 +1,64 @@
 """Regression coverage for browser startup and publication boundaries."""
 
+import hashlib
+import io
 import json
+import tomllib
 import zipfile
+from pathlib import Path
 
 import pytest
+from packaging.requirements import Requirement
 
 from scripts import build_pages
-from scripts.build_pages import enable_startup, validate_local_wheels
+from scripts.build_pages import allow_cold_worker_startup, enable_startup, validate_local_wheels
+
+
+def test_bundled_versions_satisfy_notebook_requirements():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "app.py").read_text().split("# /// script\n", 1)[1].split("# ///", 1)[0]
+    metadata = tomllib.loads("\n".join(line.removeprefix("# ") for line in source.splitlines()))
+    manifest = json.loads((root / "scripts/browser-runtime.lock.json").read_text())
+    for dependency in metadata["dependencies"]:
+        requirement = Requirement(dependency)
+        assert manifest["lock"]["packages"][requirement.name]["version"] in requirement.specifier
+
+
+def test_runtime_rejects_corrupt_cached_download(tmp_path):
+    digest = hashlib.sha256(b"reviewed runtime").hexdigest()
+    (tmp_path / digest).write_bytes(b"unexpected bytes")
+    with pytest.raises(ValueError, match="checksum"):
+        build_pages.runtime_file({"name": "runtime.wasm", "sha256": digest}, tmp_path)
+
+
+def test_runtime_rejects_corrupt_network_download(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        build_pages.urllib.request, "urlopen", lambda *_a, **_k: io.BytesIO(b"wrong")
+    )
+    item = {"name": "runtime.wasm", "url": "https://example.invalid/runtime", "sha256": "0" * 64}
+    with pytest.raises(ValueError, match="checksum"):
+        build_pages.runtime_file(item, tmp_path)
+    assert not list(tmp_path.iterdir())
+
+
+def test_changed_runtime_loader_requires_review(tmp_path):
+    with pytest.raises(ValueError, match="pinned"):
+        build_pages.use_bundled_runtime(tmp_path)
+
+
+def test_cold_startup_extends_only_the_worker_transport_timeout(tmp_path):
+    asset = tmp_path / "state-test.js"
+    asset.write_text('transportId:"marimo-transport"}),maxRequestTime:2e4; otherTimeout:2e4')
+    allow_cold_worker_startup(tmp_path)
+    assert asset.read_text() == (
+        'transportId:"marimo-transport"}),maxRequestTime:120000; otherTimeout:2e4'
+    )
+
+
+def test_changed_worker_bundle_requires_review(tmp_path):
+    (tmp_path / "state-test.js").write_text("changed exporter output")
+    with pytest.raises(ValueError, match="pinned"):
+        allow_cold_worker_startup(tmp_path)
 
 
 def test_export_enables_startup_without_changing_notebook_code():
