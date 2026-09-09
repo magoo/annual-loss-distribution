@@ -8,9 +8,12 @@ from threading import Thread
 from urllib.parse import urlsplit
 
 import pytest
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
+# Match action and assertion budgets for asynchronous Python-driven UI updates.
+# The scenario editor can take more than Playwright's default five seconds on CI.
+expect.set_options(timeout=30_000)
 
 
 @pytest.fixture(scope="session")
