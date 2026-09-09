@@ -27,7 +27,7 @@ The application helps analysts:
 All modeling runs locally: in your browser on GitHub Pages, or on your computer
 when running Python directly. The application has no backend, authentication, or
 persistent data store. The public website distributes the application code and
-downloads its Python runtime and packages; your entered estimates stay in the
+serves its bundled Python runtime and packages; your entered estimates stay in the
 browser session.
 
 ## Quick start
@@ -83,14 +83,15 @@ uv run python -m http.server --bind 127.0.0.1 --directory dist
 
 Open the printed HTTP address; opening `dist/index.html` directly will not work.
 First startup requires internet access and downloads the WebAssembly Python runtime
-and numerical packages, so it takes longer than subsequent loads. Use a current
+and numerical packages from the same Pages site, so it takes longer than subsequent
+loads. No third-party CDN or package service is needed at runtime. Use a current
 Chromium or Firefox browser. Source editing is disabled in the published app.
 
 CI checks Python code, builds the app, and tests both browsers on pull requests.
 Successful runs on `main` deploy the same tested artifact through GitHub Pages;
 the CI workflow also supports manual redeployment. Generated `dist/` and Marimo
-session files remain ignored. The build publishes only the app, assets, and reviewed
-Python package, with no saved execution output.
+session files remain ignored. The build publishes the app, assets, reviewed Python
+package, and checksum-verified browser dependencies, with no saved execution output.
 
 After deployment, run the same acceptance tests against the live site:
 
@@ -98,10 +99,13 @@ After deployment, run the same acceptance tests against the live site:
 PAGES_TEST_URL=https://magoo.github.io/annual-loss-distribution/ uv run pytest browser_tests
 ```
 
-The exporter is locked by `uv.lock`. Browser numerical packages must be compatible
-with Pyodide and the notebook's declared dependency ranges. Repeatability is tested
-within each browser runtime; exact numerical identity across browser and native
-Python versions is not promised.
+The local exporter and Python environment are locked by `uv.lock`. The browser
+runtime is separately pinned in `scripts/browser-runtime.lock.json`: Pyodide
+314.0.0 / Python 3.14, NumPy 2.4.3, SciPy 1.17.1, and Plotly 6.9.0. The build downloads
+these files into an ignored cache, verifies every checksum, and includes their
+licenses. Browser tests block all third-party requests and enforce the notebook's
+declared dependency ranges. Repeatability is tested within each browser runtime;
+exact numerical identity across browser and native Python versions is not promised.
 
 ## Architecture
 

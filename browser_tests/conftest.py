@@ -5,6 +5,7 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Thread
+from urllib.parse import urlsplit
 
 import pytest
 from playwright.sync_api import sync_playwright
@@ -37,10 +38,21 @@ def pages_url(tmp_path_factory):
 
 
 @pytest.fixture(params=["chromium", "firefox"])
-def page(request):
+def page(request, pages_url):
     with sync_playwright() as playwright:
         browser = getattr(playwright, request.param).launch()
         context = browser.new_context(viewport={"width": 1440, "height": 1000})
+        external_requests = []
+
+        def same_origin_only(route):
+            if urlsplit(route.request.url).netloc != urlsplit(pages_url).netloc:
+                external_requests.append(route.request.url)
+                route.abort()
+            else:
+                route.continue_()
+
+        # Startup and every workflow must work without a third-party CDN or PyPI.
+        context.route("**/*", same_origin_only)
         page = context.new_page()
         page.set_default_timeout(30_000)
         errors = []
@@ -49,6 +61,9 @@ def page(request):
         try:
             yield page
             assert not errors, "Uncaught browser errors: " + "\n".join(errors)
+            assert not external_requests, "External runtime requests: " + "\n".join(
+                external_requests
+            )
         finally:
             context.close()
             browser.close()
