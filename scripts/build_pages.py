@@ -14,6 +14,19 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def allow_cold_worker_startup(assets: Path) -> None:
+    """Allow cold Pyodide initialization to finish before the worker RPC times out."""
+    marker = 'transportId:"marimo-transport"}),maxRequestTime:2e4'
+    matches = [path for path in assets.glob("state-*.js") if marker in path.read_text()]
+    if len(matches) != 1:
+        raise ValueError("Expected the pinned Marimo worker startup timeout")
+    path = matches[0]
+    source = path.read_text()
+    if source.count(marker) != 1:
+        raise ValueError("Expected one Marimo worker transport configuration")
+    path.write_text(source.replace(marker, marker.replace("2e4", "120000")))
+
+
 def enable_startup(html: str) -> str:
     """Override Marimo 0.24's disabled startup in the exported mount configuration.
 
@@ -79,6 +92,7 @@ def build() -> Path:
         (artifact / "index.html").write_text(html)
         (artifact / ".nojekyll").touch()
         shutil.copytree(exported / "assets", artifact / "assets")
+        allow_cold_worker_startup(artifact / "assets")
         shutil.copytree(exported / "public" / "wheels", artifact / "public" / "wheels")
         # Include only favicon assets from the export root, not vendor documents.
         for name in ("favicon.ico", "favicon-16x16.png", "favicon-32x32.png"):

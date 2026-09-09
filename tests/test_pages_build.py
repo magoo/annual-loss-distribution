@@ -6,7 +6,22 @@ import zipfile
 import pytest
 
 from scripts import build_pages
-from scripts.build_pages import enable_startup, validate_local_wheels
+from scripts.build_pages import allow_cold_worker_startup, enable_startup, validate_local_wheels
+
+
+def test_cold_startup_extends_only_the_worker_transport_timeout(tmp_path):
+    asset = tmp_path / "state-test.js"
+    asset.write_text('transportId:"marimo-transport"}),maxRequestTime:2e4; otherTimeout:2e4')
+    allow_cold_worker_startup(tmp_path)
+    assert asset.read_text() == (
+        'transportId:"marimo-transport"}),maxRequestTime:120000; otherTimeout:2e4'
+    )
+
+
+def test_changed_worker_bundle_requires_review(tmp_path):
+    (tmp_path / "state-test.js").write_text("changed exporter output")
+    with pytest.raises(ValueError, match="pinned"):
+        allow_cold_worker_startup(tmp_path)
 
 
 def test_export_enables_startup_without_changing_notebook_code():

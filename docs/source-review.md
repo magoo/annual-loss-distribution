@@ -152,6 +152,10 @@ The build uses Marimo's WebAssembly exporter in run mode and includes the local
 cover NumPy, SciPy, Plotly, and Marimo. The generated runtime configuration enables
 startup because the pinned exporter otherwise resets it to disabled. This affects
 initialization only; annual-loss calculations still require the Calculate action.
+The pinned worker bridge's 20-second RPC timeout is extended to two minutes for
+cold Python/package initialization, particularly in Firefox. The build checks the
+exact pinned bridge configuration and fails if an exporter upgrade changes it.
+Browser readiness requires the Calculate control, not the independent heading cell.
 
 WebAssembly uses 32-bit array indices. Annual-loss grouping converts validated
 event counts to NumPy's platform index type before `repeat` and `bincount`;

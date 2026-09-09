@@ -13,11 +13,11 @@ def set_number(control, value):
 
 def test_browser_workflow(page, pages_url):
     page.goto(pages_url)
-    expect(page.get_by_role("heading", name="Annual losses from breaches")).to_be_visible(
-        timeout=120_000
-    )
     calculate = page.get_by_role("button", name="Calculate / Recalculate annual loss")
-    expect(calculate).to_be_enabled()
+    # The independent heading cell can render before numerical dependencies are
+    # initialized. Startup is complete only when the model controls are ready.
+    expect(calculate).to_be_enabled(timeout=120_000)
+    expect(page.get_by_role("heading", name="Annual losses from breaches")).to_be_visible()
     expect(page.get_by_text("Decision range", exact=True)).to_have_count(0)
     expect(page.locator(".js-plotly-plot")).to_have_count(2)
     calculate.click()

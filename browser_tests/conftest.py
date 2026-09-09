@@ -43,10 +43,12 @@ def page(request):
         context = browser.new_context(viewport={"width": 1440, "height": 1000})
         page = context.new_page()
         page.set_default_timeout(30_000)
-        page.on("pageerror", lambda error: print(f"Browser error: {error.stack}"))
+        errors = []
+        page.on("pageerror", lambda error: errors.append(error.stack))
         page.on("requestfailed", lambda req: print(f"Failed request: {req.url}: {req.failure}"))
         try:
             yield page
+            assert not errors, "Uncaught browser errors: " + "\n".join(errors)
         finally:
             context.close()
             browser.close()
