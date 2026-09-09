@@ -133,8 +133,41 @@ activate together, with no hybrid simulation API.
 6. Keep reporting language precise: say `modeled outcome range`, not statistical
    `confidence interval`. Include the actual seed and effective rounds in result and
    report metadata.
-7. Keep all inputs in memory for v1. Persistence, authentication, telemetry,
-   deployment, and static export are outside the initial implementation.
+7. Keep all inputs in memory for v1. Persistence, authentication, and telemetry
+   remain outside the implementation. The approved Pages migration adds an
+   interactive WebAssembly export: Python and the existing modeling package run
+   in the visitor's browser, with no simulation backend or uploaded estimates.
+   Runtime and package downloads require internet access. Preserve the same model,
+   workload limits, and explicit Calculate/Recalculate boundary in this environment.
+
+## GitHub Pages migration
+
+The Python application replaces the Svelte application in the existing public
+repository. The `legacy-svelte-2026-09-08` tag preserves the old app for rollback;
+both implementations' commit histories remain reachable. The separately created
+private `security-org-planning-annual-loss` repository remains a backup.
+
+The build uses Marimo's WebAssembly exporter in run mode and includes the local
+`annual_loss` package as a browser-installable wheel. Explicit notebook dependencies
+cover NumPy, SciPy, Plotly, and Marimo. The generated runtime configuration enables
+startup because the pinned exporter otherwise resets it to disabled. This affects
+initialization only; annual-loss calculations still require the Calculate action.
+
+WebAssembly uses 32-bit array indices. Annual-loss grouping converts validated
+event counts to NumPy's platform index type before `repeat` and `bincount`;
+64-bit counts remain in use for workload totals. The same safety limits are checked
+before narrowing, so this portability fix changes neither draws nor model semantics.
+
+Deployment is gated on Python checks and Chromium/Firefox tests served at the real
+Pages path. Browser tests cover interactive calculations, validation, editors,
+charts, and report copying. Identical inputs and seeds must repeat within a given
+browser numerical environment. Pyodide may use different package versions from the
+native locked environment, so cross-environment sample equality is not a contract.
+
+Only a successful `main` build is deployed. If live verification fails, restore the
+legacy tag's tree and deployment workflow in a new commit and redeploy it; never
+force-push or delete history. Keep the current site running until browser acceptance
+passes on the migration branch.
 
 ## Idiomatic Marimo design
 

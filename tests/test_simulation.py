@@ -59,6 +59,30 @@ PAIRED_SCENARIOS = [
 ]
 
 
+def test_cost_grouping_supports_32_bit_browser_indices(monkeypatch):
+    from annual_loss.simulation import _sum_costs_by_year
+
+    repeat = np.repeat
+
+    def repeat_on_32_bit_platform(years, counts):
+        assert years.dtype == np.dtype(np.int32)
+        assert counts.dtype == np.dtype(np.int32)
+        return repeat(years, counts)
+
+    monkeypatch.setattr(np, "intp", np.int32)
+    monkeypatch.setattr(np, "repeat", repeat_on_32_bit_platform)
+    result = _sum_costs_by_year(np.array([2.0, 3.0, 5.0, 7.0]), np.array([2, 0, 2], dtype=np.int64))
+    np.testing.assert_array_equal(result, [5.0, 0.0, 12.0])
+
+
+def test_cost_grouping_rejects_oversized_counts_before_narrowing(monkeypatch):
+    from annual_loss.simulation import _sum_costs_by_year
+
+    monkeypatch.setattr(np, "intp", np.int32)
+    with pytest.raises(SimulationSafetyError):
+        _sum_costs_by_year(np.array([], dtype=float), np.array([2**32], dtype=np.int64))
+
+
 def assert_valid_result(result, *, rounds: int, kind: Section) -> None:
     assert result.num_rounds == rounds
     assert result.kind is kind

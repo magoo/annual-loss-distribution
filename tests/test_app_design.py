@@ -305,5 +305,8 @@ def test_executive_summary_has_an_adjacent_copy_control_without_report_dialog() 
 
     assert expected_line in summary.copy_text
     assert marker in copy_control_html
+    # Marimo flattens iframe source lines; multiline attributes must not become
+    # a malformed <buttonid=...> element with no actual clickable button.
+    assert '<button id="copy-report" ' in copy_control_html
     assert expected_assignment in copy_control_html
     assert re.search(r">\s*Copy\s*</button>", copy_control_html)

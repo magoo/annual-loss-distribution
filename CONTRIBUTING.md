@@ -51,6 +51,11 @@ installs with `uv sync --locked`, so an out-of-date lockfile will fail validatio
   maximum-workload boundaries where relevant.
 - Verify notebook changes with Marimo's static checker and, for workflow changes, a
   local app smoke test.
+- For UI, simulation, or deployment changes, build with
+  `uv run python scripts/build_pages.py` and run `uv run pytest browser_tests`.
+  Install Chromium and Firefox first with `uv run playwright install chromium firefox`.
+  These tests exercise the browser runtime at the GitHub Pages subdirectory; native
+  Python tests alone do not cover WebAssembly's 32-bit array indices or iframe behavior.
 
 ## Pull request checklist
 

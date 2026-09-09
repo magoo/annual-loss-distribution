@@ -292,12 +292,14 @@ def _sum_costs_by_year(
     costs: NDArray[np.float64],
     event_counts: NDArray[np.int64],
 ) -> NDArray[np.float64]:
-    total_events = int(np.sum(event_counts, dtype=np.int64))
+    total_events = _check_total_event_draws(event_counts)
     if costs.size != total_events:
         raise RuntimeError("cost sample count does not match the simulated incidents")
     if total_events == 0:
         return np.zeros(event_counts.size, dtype=np.float64)
-    years = np.repeat(np.arange(event_counts.size, dtype=np.int64), event_counts)
+    # repeat/bincount need platform-sized indices (32-bit in Pyodide). Convert
+    # only after the workload checks above; every permitted count fits int32.
+    years = np.repeat(np.arange(event_counts.size, dtype=np.intp), event_counts.astype(np.intp))
     totals = np.bincount(years, weights=costs, minlength=event_counts.size)
     if not np.all(np.isfinite(totals)):
         raise FloatingPointError("annual loss aggregation produced a non-finite value")

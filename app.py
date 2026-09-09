@@ -1,3 +1,13 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#     "marimo==0.24.0",
+#     "numpy>=2,<3",
+#     "plotly>=6,<7",
+#     "scipy>=1.15,<2",
+# ]
+# ///
+
 import marimo
 
 __generated_with = "0.24.0"
@@ -255,14 +265,7 @@ def _(json, mo):
             </style>
           </head>
           <body>
-            <button
-              id="copy-report"
-              data-testid="copy-executive-summary"
-              type="button"
-              aria-describedby="copy-status"
-              aria-label="Copy executive summary to clipboard"
-              title="Copy executive summary"
-            >Copy</button>
+            <button id="copy-report" data-testid="copy-executive-summary" type="button" aria-describedby="copy-status" aria-label="Copy executive summary to clipboard" title="Copy executive summary">Copy</button>
             <span id="copy-status" class="sr-only" aria-live="polite"></span>
             <script>
               const reportText = __REPORT_TEXT_JSON__;

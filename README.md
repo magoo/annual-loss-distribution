@@ -1,9 +1,12 @@
 # Annual Loss Distribution for Marimo
 
-A local, reactive application for turning security-risk estimates into annual-loss
-distributions. This project ports the behavior of
-[`magoo/annual-loss-distribution`](https://github.com/magoo/annual-loss-distribution)
-from Svelte/JavaScript to Python and [Marimo](https://marimo.io/).
+A reactive application for turning security-risk estimates into annual-loss
+distributions, built with Python and [Marimo](https://marimo.io/).
+
+**[Open Annual Loss Distribution](https://magoo.github.io/annual-loss-distribution/)**
+
+This version replaces the original Svelte/JavaScript application. Its source remains
+available in the repository history and the `legacy-svelte-2026-09-08` tag.
 
 The application helps analysts:
 
@@ -21,8 +24,11 @@ The application helps analysts:
 - Explore PDF/histogram and CDF views, modeled outcome ranges, and a copy-ready
   executive summary.
 
-All modeling runs locally. The v1 application has no backend, authentication, or
-persistent data store.
+All modeling runs locally: in your browser on GitHub Pages, or on your computer
+when running Python directly. The application has no backend, authentication, or
+persistent data store. The public website distributes the application code and
+downloads its Python runtime and packages; your entered estimates stay in the
+browser session.
 
 ## Quick start
 
@@ -53,6 +59,49 @@ uv run marimo check --strict app.py
 
 Use `uv lock` after intentionally changing dependencies, and commit `uv.lock` so
 local and CI environments resolve the same versions.
+
+## GitHub Pages build and deployment
+
+Build the interactive browser app and run its Chromium and Firefox acceptance tests:
+
+```bash
+uv sync --locked
+uv run python scripts/build_pages.py
+uv run playwright install chromium firefox
+uv run pytest browser_tests
+```
+
+The tests serve the build at `/annual-loss-distribution/`, including its bundled
+local Python package. On Linux, use `playwright install --with-deps chromium firefox`
+to install the browsers' system dependencies as well.
+
+To preview the generated app manually:
+
+```bash
+uv run python -m http.server --bind 127.0.0.1 --directory dist
+```
+
+Open the printed HTTP address; opening `dist/index.html` directly will not work.
+First startup requires internet access and downloads the WebAssembly Python runtime
+and numerical packages, so it takes longer than subsequent loads. Use a current
+Chromium or Firefox browser. Source editing is disabled in the published app.
+
+CI checks Python code, builds the app, and tests both browsers on pull requests.
+Successful runs on `main` deploy the same tested artifact through GitHub Pages;
+the CI workflow also supports manual redeployment. Generated `dist/` and Marimo
+session files remain ignored. The build publishes only the app, assets, and reviewed
+Python package, with no saved execution output.
+
+After deployment, run the same acceptance tests against the live site:
+
+```bash
+PAGES_TEST_URL=https://magoo.github.io/annual-loss-distribution/ uv run pytest browser_tests
+```
+
+The exporter is locked by `uv.lock`. Browser numerical packages must be compatible
+with Pyodide and the notebook's declared dependency ranges. Repeatability is tested
+within each browser runtime; exact numerical identity across browser and native
+Python versions is not promised.
 
 ## Architecture
 
@@ -96,5 +145,5 @@ checks.
 ## Attribution and license
 
 This implementation is derived from the ISC-licensed
-[`annual-loss-distribution`](https://github.com/magoo/annual-loss-distribution)
-project by Ryan McGeehan. See [`LICENSE`](LICENSE).
+[original application](https://github.com/magoo/annual-loss-distribution/tree/53c864df0c9b7a8ef866858c7c27e2d43a67b864)
+by Ryan McGeehan. See [`LICENSE`](LICENSE).
