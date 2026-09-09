@@ -1,7 +1,36 @@
-node_modules
-dist
-.vite
-.env*
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Environments and packaging
+.venv/
+venv/
+env/
+build/
+dist/
+*.egg-info/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editors, operating systems, and agent logs
 .DS_Store
-.vscode/
 .idea/
+.vscode/
+.codex-log/
+*.swp
+*~
+
+# Runtime output
+__marimo__/
+*.log

@@ -1,118 +1,149 @@
-# Annual Loss Distribution
+# Annual Loss Distribution for Marimo
 
-A friendly, browser-based app for turning security risk intuition into a usable annual loss curve.
+A reactive application for turning security-risk estimates into annual-loss
+distributions, built with Python and [Marimo](https://marimo.io/).
 
-Instead of wrestling with raw probability math, you can describe how often bad events happen, how much they cost, and let the app run the simulation for you.
+**[Open Annual Loss Distribution](https://magoo.github.io/annual-loss-distribution/)**
 
-**[Live demo](https://magoo.github.io/annual-loss-distribution/)**
+This version replaces the original Svelte/JavaScript application. Its source remains
+available in the repository history and the `legacy-svelte-2026-09-08` tag.
 
-## What this app does
+The application helps analysts:
 
-- Helps you model **Frequency** (how often incidents happen)
-- Helps you model **Cost** (how expensive each incident is)
-- Combines both into **Annual Loss** using Monte Carlo simulation
-- Lets you work in either:
-  - **Distribution mode** (Lognormal, PERT, Pareto)
-  - **Scenario Mode** (threat-by-threat scenario modeling)
-- Supports **Panel Mode** for multiple expert inputs
-- Shows results as an analytic **PDF** or empirical **distribution** chart, plus a **CDF**
-- Adds a configurable central **modeled outcome range** summary
-- Generates an **executive report** style narrative on the Calculate tab
+- Work through three numbered, always-visible sections—Frequency, Cost, and
+  Calculate—in one top-to-bottom page.
+- Model annual incident frequency and per-incident cost with lognormal, modified
+  PERT, or Pareto distributions.
+- Add, edit, and remove named threat scenarios in one expanded list, with
+  method-aware frequency and cost forms that show only the inputs each model uses.
+- Use one linked scenario mode: every scenario row pairs its own frequency and cost
+  assumptions, and yearly losses are summed across the scenario set.
+- Combine frequency and cost through seeded Monte Carlo simulation.
+- Add and delete subject-matter experts in expanded panel lists, aggregate their
+  estimates, and inspect parameter-level panel analytics.
+- Explore PDF/histogram and CDF views, modeled outcome ranges, and a copy-ready
+  executive summary.
 
-Everything runs client-side. No backend required.
+All modeling runs locally: in your browser on GitHub Pages, or on your computer
+when running Python directly. The application has no backend, authentication, or
+persistent data store. The public website distributes the application code and
+downloads its Python runtime and packages; your entered estimates stay in the
+browser session.
 
-## How to use it (quick walkthrough)
+## Quick start
 
-1. Start with **Frequency** and review how often incidents happen.
-2. Continue to **Cost** and review how expensive each incident is.
-3. Open **Calculate** to view combined annual loss results and the report summary.
-4. In Frequency and Cost, choose one modeling option:
-   - **Lognormal**: most outcomes are moderate, with occasional bigger spikes
-   - **PERT**: you estimate low / likely / high values
-   - **Pareto**: you want to emphasize tail risk and rare extremes
-   - **Scenario Mode**: model named threat scenarios directly
-5. Enter inputs (or use panelists/scenarios).
-6. Review the chart and switch between **PDF** and **CDF**.
-7. Adjust the confidence slider to see the range statement update.
-
-The workflow is guided in order: Frequency first, Cost second, Calculate third. You can still open later steps early, but the app asks you to make that choice intentionally.
-
-## Modeling modes
-
-### Distribution mode (Lognormal / PERT / Pareto)
-
-Use this when you want a compact model from a few key estimates.
-
-- **Lognormal** and **Pareto** use percentile-style inputs (P50/P95)
-- **PERT** uses min / most likely / max
-- Inputs are section-aware (Frequency vs Cost)
-
-### Scenario Mode
-
-Use this when you want to model specific threat scenarios (for example, ransomware, social engineering, supply chain, etc.).
-
-- Add/edit/remove scenarios
-- Choose per-scenario frequency method and cost distribution
-- Use the same named scenarios on the Frequency and Cost tabs
-- Optional mini previews per scenario
-- Scenario simulations run for **up to 10,000 Monte Carlo rounds**; unusually high event counts reduce the round count to keep the browser responsive
-
-Scenario mode is global: the Frequency and Cost tabs share the same scenario list and scenario names, while each scenario keeps separate frequency and cost inputs.
-
-### Panel Mode
-
-Use this when multiple SMEs need to contribute.
-
-- Add panelists
-- Capture each panelist's estimates
-- App computes aggregate parameters and summary analytics
-
-## How the simulation works (plain English)
-
-- In distribution mode, the app samples from your chosen distributions.
-- In scenario mode, the app samples events/costs from your scenario definitions.
-- For annual loss, it samples an annual incident count and sums an independent cost draw for every incident in each simulated year.
-- Simulation rounds adapt downward for high but feasible event counts, and extreme frequency inputs are rejected rather than allowing the browser to hang.
-- Results are shown as either:
-  - **PDF / Distribution**: where outcomes are concentrated
-  - **CDF**: probability of being at or below a value
-
-The modeled-range module interpolates a central outcome range from the CDF and expresses it in a plain-language sentence. This is a predictive summary of model outcomes, not a statistical confidence interval for estimated parameters.
-
-## Current feature highlights
-
-- Frequency / Cost / Calculate workflow
-- Numbered workflow stepper with soft gates for the intended order
-- Integrated mode selector: **Lognormal | PERT | Pareto | Scenario Mode**
-- Mode-specific descriptive guidance text
-- Scenario editor with optional previews
-- Panel analytics support
-- Modeled outcome range slider (50% to 95%)
-- Executive report summary on Calculate
-- Deterministic seeded Monte Carlo implementation
-- Comprehensive math/unit test coverage
-
-## Tech stack
-
-- [Svelte 5](https://svelte.dev/) (runes)
-- [Vite](https://vite.dev/)
-- [Plotly.js](https://plotly.com/javascript/) for charts
-- [jStat](https://jstat.github.io/) for distribution math
-- [Vitest](https://vitest.dev/) for tests
-
-## Development
-
-Requires **Node 22+** (see `.nvmrc`).
+Install [uv](https://docs.astral.sh/uv/) and Python 3.11 or newer, then run:
 
 ```bash
-npm install
-npm run dev      # Start local dev server (usually http://localhost:5173)
-npm test         # Run unit tests
-npm run build    # Build production assets
-npm run preview  # Preview production build locally
+uv sync
+uv run marimo edit app.py
 ```
 
-## License
+The second command opens the notebook editor. To run the application in read-only
+mode instead:
 
-Copyright Ryan McGeehan.
-ISC License.
+```bash
+uv run marimo run app.py
+```
+
+## Development checks
+
+Run the same checks used by CI before opening a pull request:
+
+```bash
+uv run ruff format --check .
+uv run ruff check .
+uv run pytest
+uv run marimo check --strict app.py
+```
+
+Use `uv lock` after intentionally changing dependencies, and commit `uv.lock` so
+local and CI environments resolve the same versions.
+
+## GitHub Pages build and deployment
+
+Build the interactive browser app and run its Chromium and Firefox acceptance tests:
+
+```bash
+uv sync --locked
+uv run python scripts/build_pages.py
+uv run playwright install chromium firefox
+uv run pytest browser_tests
+```
+
+The tests serve the build at `/annual-loss-distribution/`, including its bundled
+local Python package. On Linux, use `playwright install --with-deps chromium firefox`
+to install the browsers' system dependencies as well.
+
+To preview the generated app manually:
+
+```bash
+uv run python -m http.server --bind 127.0.0.1 --directory dist
+```
+
+Open the printed HTTP address; opening `dist/index.html` directly will not work.
+First startup requires internet access and downloads the WebAssembly Python runtime
+and numerical packages, so it takes longer than subsequent loads. Use a current
+Chromium or Firefox browser. Source editing is disabled in the published app.
+
+CI checks Python code, builds the app, and tests both browsers on pull requests.
+Successful runs on `main` deploy the same tested artifact through GitHub Pages;
+the CI workflow also supports manual redeployment. Generated `dist/` and Marimo
+session files remain ignored. The build publishes only the app, assets, and reviewed
+Python package, with no saved execution output.
+
+After deployment, run the same acceptance tests against the live site:
+
+```bash
+PAGES_TEST_URL=https://magoo.github.io/annual-loss-distribution/ uv run pytest browser_tests
+```
+
+The exporter is locked by `uv.lock`. Browser numerical packages must be compatible
+with Pyodide and the notebook's declared dependency ranges. Repeatability is tested
+within each browser runtime; exact numerical identity across browser and native
+Python versions is not promised.
+
+## Architecture
+
+- `app.py` is the Git-friendly Marimo notebook and contains presentation and
+  interaction cells.
+- `annual_loss/` contains typed, importable modeling code with no dependency on
+  notebook state.
+- `tests/` covers deterministic behavior, statistical properties, validation,
+  workload limits, and reporting utilities.
+- [`docs/source-review.md`](docs/source-review.md) records the upstream feature
+  inventory, numerical semantics, review findings, and parity decisions.
+- [`AGENTS.md`](AGENTS.md) defines repository-wide working agreements for coding
+  agents and engineers.
+
+Marimo's reactive dataflow is used for input previews and presentation. The three
+workflow sections remain visible together so analysts can review or revise earlier
+assumptions without switching views. Expensive Monte Carlo work is gated by an
+explicit Calculate/Recalculate action so routine UI edits do not continually launch
+large simulations.
+
+## Numerical trust and reproducibility
+
+Production math uses NumPy and SciPy rather than custom probability or random-number
+implementations. Every Monte Carlo result carries an explicit seed and effective
+round count. Re-running the same validated inputs with the same seed must reproduce
+the same result within the same locked environment.
+
+Statistical parity with the upstream project means preserving its fitted
+distributions and simulation semantics; it does not mean reproducing its JavaScript
+PRNG sample stream byte-for-byte.
+
+The output is a model derived from elicited assumptions. It is not a guarantee,
+forecast, accounting opinion, or substitute for professional risk judgment.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md). Changes are expected to arrive through a
+reviewable Git branch, include tests proportional to their risk, and pass all CI
+checks.
+
+## Attribution and license
+
+This implementation is derived from the ISC-licensed
+[original application](https://github.com/magoo/annual-loss-distribution/tree/53c864df0c9b7a8ef866858c7c27e2d43a67b864)
+by Ryan McGeehan. See [`LICENSE`](LICENSE).

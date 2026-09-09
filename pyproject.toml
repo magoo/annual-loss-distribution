@@ -1,0 +1,40 @@
+[project]
+name = "annual-loss-distribution-marimo"
+version = "0.1.0"
+description = "Interactive annual-loss distribution modeling with Marimo"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "ISC" }
+authors = [{ name = "Ryan McGeehan" }]
+dependencies = [
+    "marimo>=0.24,<1",
+    "numpy>=2,<3",
+    "plotly>=6,<7",
+    "scipy>=1.15,<2",
+]
+
+[dependency-groups]
+dev = [
+    "playwright>=1.55,<2",
+    "pytest>=8,<10",
+    "ruff>=0.14,<1",
+]
+
+[tool.pytest.ini_options]
+addopts = ["-ra", "--strict-config", "--strict-markers"]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["B", "E4", "E7", "E9", "F", "I", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"app.py" = ["B018"]
+
+[tool.ruff.format]
+indent-style = "space"
+quote-style = "double"
