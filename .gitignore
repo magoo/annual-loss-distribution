@@ -34,3 +34,10 @@ dist/
 # Runtime output
 __marimo__/
 *.log
+
+# Private analysis backups (never bundled or published)
+analysis-backups/
+private/
+*.analysis.json
+annual-loss-analyses*.json
+unreadable-analysis*.json

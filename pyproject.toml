@@ -7,10 +7,12 @@ requires-python = ">=3.11"
 license = { text = "ISC" }
 authors = [{ name = "Ryan McGeehan" }]
 dependencies = [
+    "anywidget>=0.9,<1",
     "marimo>=0.24,<1",
     "numpy>=2,<3",
     "plotly>=6,<7",
     "scipy>=1.15,<2",
+    "traitlets>=5,<6",
 ]
 
 [dependency-groups]

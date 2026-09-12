@@ -25,10 +25,40 @@ The application helps analysts:
   executive summary.
 
 All modeling runs locally: in your browser on GitHub Pages, or on your computer
-when running Python directly. The application has no backend, authentication, or
-persistent data store. The public website distributes the application code and
-serves its bundled Python runtime and packages; your entered estimates stay in the
-browser session.
+when running Python directly. The application has no backend or authentication.
+Named analyses and unfinished typing save in this browser profile, with a durable
+IndexedDB recovery copy. The public website distributes the application code and
+serves its bundled Python runtime and packages; your entered estimates stay in
+browser storage and any backups you download.
+
+## Save, restore, and back up analyses
+
+Use **Your analyses** above the view controls to create, rename, duplicate, switch,
+and delete analyses. The last-used analysis reopens automatically. All input modes,
+hidden parameters, expert panels, scenarios, seed, chart settings, and unfinished
+typing are saved. Press Enter or leave a numeric field to apply an edit. Saved
+analyses keep their own inputs when application defaults change.
+
+- **Download analysis** creates a readable `.analysis.json` backup.
+- **Back up all analyses** downloads the readable library, including unsaved drafts.
+- **Import backup** creates new analyses without overwriting existing ones.
+- **Recover previous session** restores a checkpoint as a separate analysis.
+- **Retry saving / Edit here** retries storage or acquires ownership after another
+  tab releases it. Only one tab can edit an analysis at a time.
+
+The save indicator is independent of calculation success. **Saved** means the
+latest durable browser transaction completed. **Not saved** means work remains in
+memory and should be downloaded before closing. Browser storage is local to an
+origin and profile; clearing site data or losing the profile can remove it. JSON
+backups move work between devices, browsers, or local/Pages origins.
+
+Annual-loss results are not included in backups. Opening or switching an analysis
+requires **Calculate / Recalculate annual loss** to regenerate those results.
+Typing, saving, and restoring do not automatically run annual-loss calculations.
+
+Keep sensitive backups outside this source repository or in its ignored
+`analysis-backups/` or `private/` directory. See [ANALYSIS_BACKUPS.md](ANALYSIS_BACKUPS.md)
+for the format, compatibility rules, and recovery limits.
 
 ## Quick start
 

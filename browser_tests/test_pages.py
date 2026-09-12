@@ -29,12 +29,12 @@ def test_browser_workflow(page, pages_url):
     baseline_chart = page.locator(".js-plotly-plot").last.evaluate(
         "chart => JSON.stringify(chart.data)"
     )
-    report = page.locator("marimo-accordion")
+    report = page.locator(".aw-report")
     expect(report).to_contain_text("Modeled Outcome Ranges")
     baseline_report = report.text_content()
 
     # Test the real copy button, including its browser clipboard fallback.
-    copy_frame = page.frame_locator('iframe[title="Copy executive summary"]')
+    copy_frame = page
     copy = copy_frame.get_by_role("button", name="Copy executive summary to clipboard")
     copy.click()
     expect(copy).to_have_text("Copied")
@@ -103,3 +103,55 @@ def test_browser_workflow(page, pages_url):
     expect(
         copy_frame.get_by_role("button", name="Copy executive summary to clipboard")
     ).to_have_text("Copied")
+
+
+def test_saved_analysis_reopens_and_imports_without_calculating(page, pages_url):
+    import json
+    from pathlib import Path
+
+    page.goto(pages_url)
+    calculate = page.get_by_role("button", name="Calculate / Recalculate annual loss")
+    expect(calculate).to_be_enabled(timeout=120_000)
+    seed = page.get_by_role("textbox", name="Reproducibility seed")
+    set_number(seed, 4123)
+    p95 = page.get_by_role("textbox", name="P95 incidents/year", exact=True)
+    set_number(p95, 17)
+    calculate.click()
+    expect(page.locator(".ald-meta")).to_contain_text("Seed 4,123", timeout=30_000)
+    baseline = page.locator(".aw-report").text_content()
+    with page.expect_download() as result:
+        page.get_by_role("button", name="Download analysis", exact=True).click()
+    backup = Path(result.value.path()).read_bytes()
+    parsed = json.loads(backup)
+    assert "results" not in parsed
+    p95.fill("1e")
+    page.reload()
+    expect(p95).to_have_value("1e", timeout=120_000)
+    expect(page.locator(".aw-results")).to_be_empty()
+    expect(calculate).to_be_disabled()
+    set_number(p95, 17)
+    calculate.click()
+    expect(page.locator(".aw-report")).to_have_text(baseline, timeout=30_000)
+    page.get_by_label("Import backup file", exact=True).set_input_files(
+        {"name": "saved.analysis.json", "mimeType": "application/json", "buffer": backup}
+    )
+    expect(page.get_by_role("combobox", name="Analysis", exact=True)).not_to_have_value(
+        parsed["id"]
+    )
+    expect(page.locator(".aw-results")).to_be_empty()
+    expect(calculate).to_be_enabled()
+    calculate.click()
+    expect(page.locator(".aw-report")).to_have_text(baseline, timeout=30_000)
+    # Both calculation and preview responses update outputs without remounting inputs.
+    handle = p95.element_handle()
+    p95.fill("19")
+    expect(p95).to_be_focused()
+    page.wait_for_timeout(500)
+    assert handle.evaluate("node => node.isConnected")
+    expect(p95).to_be_focused()
+    for width in (1440, 390):
+        page.set_viewport_size({"width": width, "height": 1000})
+        page.wait_for_function(
+            "node => node.scrollWidth <= node.clientWidth + 1",
+            arg=page.locator(".analysis-workspace").element_handle(),
+        )

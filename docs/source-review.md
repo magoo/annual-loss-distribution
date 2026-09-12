@@ -49,7 +49,8 @@ Calculate combines the reviewed inputs and provides:
 - A copy-ready executive summary covering simulation setup, source estimates,
   distributions or scenarios, and modeled ranges for frequency, cost, and loss.
 
-The application is entirely local to the browser and has no backend or persistence.
+The upstream application is entirely local to the browser and has no backend or persistence.
+The approved save-system addition below introduces browser-local persistence in this port.
 
 ## Numerical behavior to preserve
 
@@ -133,8 +134,9 @@ activate together, with no hybrid simulation API.
 6. Keep reporting language precise: say `modeled outcome range`, not statistical
    `confidence interval`. Include the actual seed and effective rounds in result and
    report metadata.
-7. Keep all inputs in memory for v1. Persistence, authentication, and telemetry
-   remain outside the implementation. The approved Pages migration adds an
+7. The original v1 kept all inputs in memory. The approved save-system addition
+   now permits browser-local persistence and explicit JSON backups; authentication,
+   telemetry, and an application backend remain outside the implementation. The Pages migration adds an
    interactive WebAssembly export: Python and the existing modeling package run
    in the visitor's browser, with no simulation backend or uploaded estimates.
    Runtime and package downloads require internet access. Preserve the same model,
@@ -185,16 +187,18 @@ passes on the migration branch.
   dependencies.
 - Keep trusted calculations in a normal `annual_loss` package so unit tests do not
   depend on notebook execution or browser state.
-- Use Marimo controls and forms for distribution parameters, mode choices,
-  method-aware scenario editing, panelists, chart options, and calculation
-  submission. Scenario and panelist rows use stable IDs and remain visible together
+- Use a persistent AnyWidget browser editor for distribution parameters, mode
+  choices, method-aware scenario editing, panelists, chart options, and calculation
+  submission. Python receives immutable snapshots and supplies validated presentation
+  payloads; calculations never replace the input DOM. Scenario and panelist rows use stable IDs and remain visible together
   in expanded vertical lists. Each form reveals only the parameters used by its
   selected method or distribution while retaining hidden values. Let dataflow update
   inexpensive previews and narrative outputs.
 - Treat the Calculate button as a snapshot boundary: validate current UI values,
   create immutable model inputs, run with an explicit seed, and retain those results
   until the next calculation.
-- Render charts with Plotly and keep executive-summary generation as pure Python so
+- Build charts in Python with Plotly and render their figures using the JavaScript
+  bundled with the locked Plotly package. Keep executive-summary generation as pure Python so
   displayed and copied text share the same tested source.
 
 ## Required verification
@@ -210,3 +214,41 @@ Acceptance is based on exact deterministic assertions where appropriate and
 fixed-seed statistical tolerances for sampled moments and quantiles. CI also runs
 Ruff, pytest, Marimo's strict notebook checker, and a headless application startup
 smoke test.
+
+## Approved named-analysis save system
+
+The user approved full parity with `security-org-planning`'s named-budget saving
+workflow, adapted to annual-loss analyses. Browser-owned typing is journaled on
+every input event, then written to IndexedDB with strict durability. Library
+operations, checkpoints, JSON import/export, Web Locks, failed-save overlays, and
+durable deletion tombstones are described in [ANALYSIS_BACKUPS.md](../ANALYSIS_BACKUPS.md).
+The budget application's storage keys, database, and file formats remain separate.
+
+A document preserves all active and inactive inputs, all three direct distribution
+parameter sets, panels and scenarios with stable IDs/order/allocation counters,
+remembered workflow modes, hidden parameters, seed, view settings, and raw drafts.
+Switching direct distributions now retains each distribution's edited parameters
+instead of rebuilding its controls from defaults. Structural validation permits
+invalid model ranges for recovery; the existing model validation still gates
+previews and calculations. Browser seed values are bounded to JSON-safe integers;
+unfinished or larger inputs are retained as drafts, with visible validation. Core
+simulation APIs, NumPy seeding, numerical semantics, and workload ceilings are unchanged.
+
+Result arrays are not persisted. An analysis activation has a distinct identity;
+Python responses also carry the request token. Stale responses are ignored, and
+returning to a previously opened analysis does not show a prior activation's results.
+Within an activation, edits retain the last explicitly calculated snapshot. Preview
+requests cannot invoke the annual-loss calculation; view changes reuse preview data
+and any current calculated result.
+
+The supported AnyWidget/traitlets bridge keeps the editor mounted independently of
+Python updates. Widget and Plotly JavaScript are embedded from local packages.
+Their complete browser Python dependency closure is checksum-pinned and distributed
+from the same Pages origin. The export remains limited to reviewed package sources,
+runtime dependencies, and application assets, without execution output or user saves.
+
+Verification adds Python/browser schema agreement, document round trips, recovery
+and import failure cases, multi-tab ownership, blocked/full storage, stale worker
+responses, preserved focus, and abrupt Chromium process termination with an isolated
+profile. The real exported application still runs its Chromium/Firefox workflow
+suite with third-party requests blocked.
