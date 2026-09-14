@@ -114,6 +114,91 @@
       "name": "LICENSE-mathjax.txt",
       "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
       "url": "https://cdn.jsdelivr.net/npm/mathjax-full@3.2.2/LICENSE"
+    },
+    {
+      "name": "anywidget-0.11.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/8e/c2/8fec8e8e2eb920cc2280f569144080cd58622a2eda83bfa4c0c354a63264/anywidget-0.11.0-py3-none-any.whl",
+      "sha256": "c574d9acc6503ad27b37a9acea48f957a8ba7c9c9876cfcb37898931c098ce9d"
+    },
+    {
+      "name": "ipywidgets-8.1.9-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c3/55/298e9b3b864a198234997e87a1471c1b17d7f3546ace6d18fb5cf1ce24b2/ipywidgets-8.1.9-py3-none-any.whl",
+      "sha256": "f2b8cbcaae10252b809fbe4d7470db75c09b769a32cbf816d20e5ca6d3c5a79d"
+    },
+    {
+      "name": "comm-0.2.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/60/97/891a0971e1e4a8c5d2b20bbe0e524dc04548d2307fee33cdeba148fd4fc7/comm-0.2.3-py3-none-any.whl",
+      "sha256": "c615d91d75f7f04f095b30d1c1711babd43bdc6419c1be9886a85f2f4e489417"
+    },
+    {
+      "name": "ipython-9.17.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/2d/1e/65b59cf518c106aa755e7f7da3099027738687a862ec785060702a481320/ipython-9.17.1-py3-none-any.whl",
+      "sha256": "6d1645743cfd1a07eb695d85aa2b5fa66721f8cbae9431d4049f7084bbf06509"
+    },
+    {
+      "name": "ipython_pygments_lexers-1.1.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d9/33/1f075bf72b0b747cb3288d011319aaf64083cf2efef8354174e3ed4540e2/ipython_pygments_lexers-1.1.1-py3-none-any.whl",
+      "sha256": "a9462224a505ade19a605f71f8fa63c2048833ce50abc86768a0d81d876dc81c"
+    },
+    {
+      "name": "matplotlib_inline-0.2.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/41/09/5b161152e2d90f7b87f781c2e1267494aef9c32498df793f73ad0a0a494a/matplotlib_inline-0.2.2-py3-none-any.whl",
+      "sha256": "3c821cf1c209f59fb2d2d64abbf5b23b67bcb2210d663f9918dd851c6da1fcf6"
+    },
+    {
+      "name": "traitlets-5.16.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/ad/66/0d785f0bc5e4315a96c989bb476d0fc07ea4f85132550c7b156ca2035d52/traitlets-5.16.1-py3-none-any.whl",
+      "sha256": "f775618166caa0396c8e337099240f2bd3e5e917d203b2e6fbe21a58d3cb1f6b"
+    },
+    {
+      "name": "prompt_toolkit-3.0.53-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/54/6f/84908cad2d6aa5144abcf7b42709fe4fdb459bc640ec7ac5786e7693dabc/prompt_toolkit-3.0.53-py3-none-any.whl",
+      "sha256": "01c0891d7f9237d5e339f7d3e42cdae80b7534abb1c7c0e3352efba6231492f2"
+    },
+    {
+      "name": "wcwidth-0.8.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c4/0e/57f6bb3024a597b2e8ec4aee710ffe62ddc95af2e2bb1ee7a7abdc22c68c/wcwidth-0.8.3-py3-none-any.whl",
+      "sha256": "d5b73dba6158a595ec9370350e7f2637bcac8d6c5e4fde34f30fcffb6103a5e4"
+    },
+    {
+      "name": "stack_data-0.6.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl",
+      "sha256": "d5558e0c25a4cb0853cddad3d77da9891a08cb85dd9f9f91b9f8cd66e511e695"
+    },
+    {
+      "name": "asttokens-3.0.2-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/d4/2b/04b8a15f3a1c77bc79ddf5c73875327f34b4fa75982df2b76e45e402d364/asttokens-3.0.2-py3-none-any.whl",
+      "sha256": "9da13157f5b28becde0bd374fc677dcd3c290614264eff096f167c469cd9f933"
+    },
+    {
+      "name": "executing-2.2.1-py2.py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/c1/ea/53f2148663b321f21b5a606bd5f191517cf40b7072c0497d3c92c4a13b1e/executing-2.2.1-py2.py3-none-any.whl",
+      "sha256": "760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017"
+    },
+    {
+      "name": "pure_eval-0.2.4-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/6d/18/83376915176eb058cb86470eb7396388a13350b09a8f233a79303bbcbc5b/pure_eval-0.2.4-py3-none-any.whl",
+      "sha256": "96cae060a313cfaad51bb761278bfb0e62dc0248d9315a81173752dc546cd37a"
+    },
+    {
+      "name": "jupyterlab_widgets-3.0.17-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/33/ef/6d27fc118f58cb24886da413545a7efb0853d405fddbfd8b2d9ac09fbed4/jupyterlab_widgets-3.0.17-py3-none-any.whl",
+      "sha256": "40ac1e9955acf116c4d995d9bfa082d86ad9ec6d91c4f134827cf5e0a5eb75e0"
+    },
+    {
+      "name": "widgetsnbextension-4.0.16-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/34/95/40e17e20046b7bc820d29d09ae84ec157ec8dd6e6f6cd722626292c31b2e/widgetsnbextension-4.0.16-py3-none-any.whl",
+      "sha256": "a31a8774885b96fe825462f5d6496166f0c7cae111195b6465c801d230eb5a4e"
+    },
+    {
+      "name": "psygnal-0.16.1-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/be/f2/973c1280f035cd825af70582bbee776c69545e24534b324cf135eabef57e/psygnal-0.16.1-py3-none-any.whl",
+      "sha256": "93b96894d8c46f0a3c0bfaaf8abe73f0d6db2c20cc6d303624cf08f85abc3c92"
+    },
+    {
+      "name": "typing_extensions-4.16.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
     }
   ],
   "lock": {
@@ -350,6 +435,238 @@
         "sha256": "a84487f6f21842687f6e7fffc1e75b901f26e4e17065366bfe755bca99fe5bb9",
         "unvendored_tests": true,
         "version": "1.17.1"
+      },
+      "anywidget": {
+        "depends": [
+          "ipywidgets",
+          "psygnal",
+          "typing-extensions"
+        ],
+        "file_name": "anywidget-0.11.0-py3-none-any.whl",
+        "imports": [
+          "anywidget"
+        ],
+        "install_dir": "site",
+        "name": "anywidget",
+        "package_type": "package",
+        "sha256": "c574d9acc6503ad27b37a9acea48f957a8ba7c9c9876cfcb37898931c098ce9d",
+        "version": "0.11.0"
+      },
+      "ipywidgets": {
+        "depends": [
+          "comm",
+          "ipython",
+          "jupyterlab-widgets",
+          "traitlets",
+          "widgetsnbextension"
+        ],
+        "file_name": "ipywidgets-8.1.9-py3-none-any.whl",
+        "imports": [
+          "ipywidgets"
+        ],
+        "install_dir": "site",
+        "name": "ipywidgets",
+        "package_type": "package",
+        "sha256": "f2b8cbcaae10252b809fbe4d7470db75c09b769a32cbf816d20e5ca6d3c5a79d",
+        "version": "8.1.9"
+      },
+      "comm": {
+        "depends": [],
+        "file_name": "comm-0.2.3-py3-none-any.whl",
+        "imports": [
+          "comm"
+        ],
+        "install_dir": "site",
+        "name": "comm",
+        "package_type": "package",
+        "sha256": "c615d91d75f7f04f095b30d1c1711babd43bdc6419c1be9886a85f2f4e489417",
+        "version": "0.2.3"
+      },
+      "ipython": {
+        "depends": [
+          "ipython-pygments-lexers",
+          "jedi",
+          "matplotlib-inline",
+          "prompt-toolkit",
+          "pygments",
+          "stack-data",
+          "traitlets"
+        ],
+        "file_name": "ipython-9.17.1-py3-none-any.whl",
+        "imports": [
+          "ipython"
+        ],
+        "install_dir": "site",
+        "name": "ipython",
+        "package_type": "package",
+        "sha256": "6d1645743cfd1a07eb695d85aa2b5fa66721f8cbae9431d4049f7084bbf06509",
+        "version": "9.17.1"
+      },
+      "ipython-pygments-lexers": {
+        "depends": [
+          "pygments"
+        ],
+        "file_name": "ipython_pygments_lexers-1.1.1-py3-none-any.whl",
+        "imports": [
+          "ipython_pygments_lexers"
+        ],
+        "install_dir": "site",
+        "name": "ipython-pygments-lexers",
+        "package_type": "package",
+        "sha256": "a9462224a505ade19a605f71f8fa63c2048833ce50abc86768a0d81d876dc81c",
+        "version": "1.1.1"
+      },
+      "matplotlib-inline": {
+        "depends": [
+          "traitlets"
+        ],
+        "file_name": "matplotlib_inline-0.2.2-py3-none-any.whl",
+        "imports": [
+          "matplotlib_inline"
+        ],
+        "install_dir": "site",
+        "name": "matplotlib-inline",
+        "package_type": "package",
+        "sha256": "3c821cf1c209f59fb2d2d64abbf5b23b67bcb2210d663f9918dd851c6da1fcf6",
+        "version": "0.2.2"
+      },
+      "traitlets": {
+        "depends": [],
+        "file_name": "traitlets-5.16.1-py3-none-any.whl",
+        "imports": [
+          "traitlets"
+        ],
+        "install_dir": "site",
+        "name": "traitlets",
+        "package_type": "package",
+        "sha256": "f775618166caa0396c8e337099240f2bd3e5e917d203b2e6fbe21a58d3cb1f6b",
+        "version": "5.16.1"
+      },
+      "prompt-toolkit": {
+        "depends": [
+          "wcwidth"
+        ],
+        "file_name": "prompt_toolkit-3.0.53-py3-none-any.whl",
+        "imports": [
+          "prompt_toolkit"
+        ],
+        "install_dir": "site",
+        "name": "prompt-toolkit",
+        "package_type": "package",
+        "sha256": "01c0891d7f9237d5e339f7d3e42cdae80b7534abb1c7c0e3352efba6231492f2",
+        "version": "3.0.53"
+      },
+      "wcwidth": {
+        "depends": [],
+        "file_name": "wcwidth-0.8.3-py3-none-any.whl",
+        "imports": [
+          "wcwidth"
+        ],
+        "install_dir": "site",
+        "name": "wcwidth",
+        "package_type": "package",
+        "sha256": "d5b73dba6158a595ec9370350e7f2637bcac8d6c5e4fde34f30fcffb6103a5e4",
+        "version": "0.8.3"
+      },
+      "stack-data": {
+        "depends": [
+          "asttokens",
+          "executing",
+          "pure-eval"
+        ],
+        "file_name": "stack_data-0.6.3-py3-none-any.whl",
+        "imports": [
+          "stack_data"
+        ],
+        "install_dir": "site",
+        "name": "stack-data",
+        "package_type": "package",
+        "sha256": "d5558e0c25a4cb0853cddad3d77da9891a08cb85dd9f9f91b9f8cd66e511e695",
+        "version": "0.6.3"
+      },
+      "asttokens": {
+        "depends": [],
+        "file_name": "asttokens-3.0.2-py3-none-any.whl",
+        "imports": [
+          "asttokens"
+        ],
+        "install_dir": "site",
+        "name": "asttokens",
+        "package_type": "package",
+        "sha256": "9da13157f5b28becde0bd374fc677dcd3c290614264eff096f167c469cd9f933",
+        "version": "3.0.2"
+      },
+      "executing": {
+        "depends": [],
+        "file_name": "executing-2.2.1-py2.py3-none-any.whl",
+        "imports": [
+          "executing"
+        ],
+        "install_dir": "site",
+        "name": "executing",
+        "package_type": "package",
+        "sha256": "760643d3452b4d777d295bb167ccc74c64a81df23fb5e08eff250c425a4b2017",
+        "version": "2.2.1"
+      },
+      "pure-eval": {
+        "depends": [],
+        "file_name": "pure_eval-0.2.4-py3-none-any.whl",
+        "imports": [
+          "pure_eval"
+        ],
+        "install_dir": "site",
+        "name": "pure-eval",
+        "package_type": "package",
+        "sha256": "96cae060a313cfaad51bb761278bfb0e62dc0248d9315a81173752dc546cd37a",
+        "version": "0.2.4"
+      },
+      "jupyterlab-widgets": {
+        "depends": [],
+        "file_name": "jupyterlab_widgets-3.0.17-py3-none-any.whl",
+        "imports": [
+          "jupyterlab_widgets"
+        ],
+        "install_dir": "site",
+        "name": "jupyterlab-widgets",
+        "package_type": "package",
+        "sha256": "40ac1e9955acf116c4d995d9bfa082d86ad9ec6d91c4f134827cf5e0a5eb75e0",
+        "version": "3.0.17"
+      },
+      "widgetsnbextension": {
+        "depends": [],
+        "file_name": "widgetsnbextension-4.0.16-py3-none-any.whl",
+        "imports": [
+          "widgetsnbextension"
+        ],
+        "install_dir": "site",
+        "name": "widgetsnbextension",
+        "package_type": "package",
+        "sha256": "a31a8774885b96fe825462f5d6496166f0c7cae111195b6465c801d230eb5a4e",
+        "version": "4.0.16"
+      },
+      "psygnal": {
+        "depends": [],
+        "file_name": "psygnal-0.16.1-py3-none-any.whl",
+        "imports": [
+          "psygnal"
+        ],
+        "install_dir": "site",
+        "name": "psygnal",
+        "package_type": "package",
+        "sha256": "93b96894d8c46f0a3c0bfaaf8abe73f0d6db2c20cc6d303624cf08f85abc3c92",
+        "version": "0.16.1"
+      },
+      "typing-extensions": {
+        "depends": [],
+        "file_name": "typing_extensions-4.16.0-py3-none-any.whl",
+        "imports": [
+          "typing_extensions"
+        ],
+        "install_dir": "site",
+        "name": "typing-extensions",
+        "package_type": "package",
+        "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8",
+        "version": "4.16.0"
       }
     }
   },

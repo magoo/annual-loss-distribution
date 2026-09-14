@@ -11,7 +11,8 @@ reproducible, and safe for both engineers and coding agents.
 - The upstream behavior and approved parity decisions are documented in
   `docs/source-review.md`. Update that document when intentionally changing model
   semantics.
-- V1 is local and in-memory. Do not add a backend, telemetry, authentication,
+- Browser-local named analyses and explicit JSON backups are approved; see
+  `ANALYSIS_BACKUPS.md`. Do not add a backend, telemetry, authentication, cloud
   persistence, or external data transmission without explicit approval.
 
 ## Setup and required checks
