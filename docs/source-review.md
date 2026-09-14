@@ -50,7 +50,7 @@ Calculate combines the reviewed inputs and provides:
   distributions or scenarios, and modeled ranges for frequency, cost, and loss.
 
 The upstream application is entirely local to the browser and has no backend or persistence.
-The approved save-system addition below introduces browser-local persistence in this port.
+The named-analysis save system below introduces browser-local persistence in this port.
 
 ## Numerical behavior to preserve
 
@@ -134,8 +134,8 @@ activate together, with no hybrid simulation API.
 6. Keep reporting language precise: say `modeled outcome range`, not statistical
    `confidence interval`. Include the actual seed and effective rounds in result and
    report metadata.
-7. The original v1 kept all inputs in memory. The approved save-system addition
-   now permits browser-local persistence and explicit JSON backups; authentication,
+7. The original v1 kept all inputs in memory. The named-analysis save system
+   permits browser-local persistence and explicit JSON backups; authentication,
    telemetry, and an application backend remain outside the implementation. The Pages migration adds an
    interactive WebAssembly export: Python and the existing modeling package run
    in the visitor's browser, with no simulation backend or uploaded estimates.
@@ -146,8 +146,7 @@ activate together, with no hybrid simulation API.
 
 The Python application replaces the Svelte application in the existing public
 repository. The `legacy-svelte-2026-09-08` tag preserves the old app for rollback;
-both implementations' commit histories remain reachable. The separately created
-private `security-org-planning-annual-loss` repository remains a backup.
+both implementations' commit histories remain reachable.
 
 The build uses Marimo's WebAssembly exporter in run mode and includes the local
 `annual_loss` package as a browser-installable wheel. Explicit notebook dependencies
@@ -215,14 +214,14 @@ fixed-seed statistical tolerances for sampled moments and quantiles. CI also run
 Ruff, pytest, Marimo's strict notebook checker, and a headless application startup
 smoke test.
 
-## Approved named-analysis save system
+## Named-analysis save system
 
-The user approved full parity with `security-org-planning`'s named-budget saving
-workflow, adapted to annual-loss analyses. Browser-owned typing is journaled on
-every input event, then written to IndexedDB with strict durability. Library
-operations, checkpoints, JSON import/export, Web Locks, failed-save overlays, and
+Named analyses preserve separate sets of annual-loss inputs in the browser. Typing
+is journaled on every input event, then written to IndexedDB with strict durability.
+Library operations, checkpoints, JSON import/export, Web Locks, failed-save overlays, and
 durable deletion tombstones are described in [ANALYSIS_BACKUPS.md](../ANALYSIS_BACKUPS.md).
-The budget application's storage keys, database, and file formats remain separate.
+Storage keys, the database name, and file-format identifiers are specific to this
+application and remain stable for compatibility with existing saves.
 
 A document preserves all active and inactive inputs, all three direct distribution
 parameter sets, panels and scenarios with stable IDs/order/allocation counters,

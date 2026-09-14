@@ -1,183 +1,122 @@
-# Annual Loss Distribution for Marimo
+# Annual Loss Distribution
 
-A reactive application for turning security-risk estimates into annual-loss
-distributions, built with Python and [Marimo](https://marimo.io/).
+Explore how often security incidents might happen, how much each might cost, and
+what those assumptions could mean for a year's total losses. Annual Loss
+Distribution helps security practitioners discuss uncertainty and communicate risk
+with charts and a copyable executive summary.
 
 **[Open Annual Loss Distribution](https://magoo.github.io/annual-loss-distribution/)**
 
-This version replaces the original Svelte/JavaScript application. Its source remains
-available in the repository history and the `legacy-svelte-2026-09-08` tag.
+No installation or account is needed. Use a current Chromium or Firefox browser.
+The first load can take a little longer while the app downloads its Python runtime
+and packages from the same website.
 
-The application helps analysts:
+## Try your first analysis
 
-- Work through three numbered, always-visible sections—Frequency, Cost, and
-  Calculate—in one top-to-bottom page.
-- Model annual incident frequency and per-incident cost with lognormal, modified
-  PERT, or Pareto distributions.
-- Add, edit, and remove named threat scenarios in one expanded list, with
-  method-aware frequency and cost forms that show only the inputs each model uses.
-- Use one linked scenario mode: every scenario row pairs its own frequency and cost
-  assumptions, and yearly losses are summed across the scenario set.
-- Combine frequency and cost through seeded Monte Carlo simulation.
-- Add and delete subject-matter experts in expanded panel lists, aggregate their
-  estimates, and inspect parameter-level panel analytics.
-- Explore PDF/histogram and CDF views, modeled outcome ranges, and a copy-ready
-  executive summary.
+Start with the app's example inputs to learn the workflow, then replace them with
+your own estimates. The examples are a starting point, not recommended estimates
+for your organization.
 
-All modeling runs locally: in your browser on GitHub Pages, or on your computer
-when running Python directly. The application has no backend or authentication.
-Named analyses and unfinished typing save in this browser profile, with a durable
-IndexedDB recovery copy. The public website distributes the application code and
-serves its bundled Python runtime and packages; your entered estimates stay in
-browser storage and any backups you download.
+1. Review **Frequency**: how many incidents could occur in a year. Keep
+   **Direct estimate** selected for your first run.
+2. Review **Cost**: how much one incident could cost, in dollars. For the default
+   lognormal model, **P50** is the median: half the modeled outcomes fall at or
+   below it. **P95** is a high estimate, with 95% of outcomes at or below it.
+   It is not a maximum. Frequency uses these percentiles in the same way.
+3. Select **Calculate / Recalculate annual loss**. The app repeatedly samples
+   possible years, draws a separate cost for each incident, and adds those costs
+   to get each year's total. This is called Monte Carlo simulation.
+4. Inspect the annual-loss chart and modeled range, then use the executive summary
+   to share the assumptions and results.
+5. Give your work a name under **Your analyses**, and choose **Download analysis**
+   to keep a backup.
 
-## Save, restore, and back up analyses
+Press Enter or leave a numeric field to apply an edit. After changing assumptions,
+calculate again to update annual-loss results; editing alone does not rerun them.
 
-Use **Your analyses** above the view controls to create, rename, duplicate, switch,
-and delete analyses. The last-used analysis reopens automatically. All input modes,
-hidden parameters, expert panels, scenarios, seed, chart settings, and unfinished
-typing are saved. Press Enter or leave a numeric field to apply an edit. Saved
-analyses keep their own inputs when application defaults change.
+When you need more detail, **Expert panel** lets you enter several people's
+estimates and uses the average of each input parameter. **Threat scenarios** lets
+you pair a frequency and cost model for each named threat, then add their yearly
+losses together. Lognormal, modified PERT, and Pareto models support different
+assumptions about the spread of outcomes; the forms explain the inputs they need.
 
-- **Download analysis** creates a readable `.analysis.json` backup.
-- **Back up all analyses** downloads the readable library, including unsaved drafts.
-- **Import backup** creates new analyses without overwriting existing ones.
-- **Recover previous session** restores a checkpoint as a separate analysis.
-- **Retry saving / Edit here** retries storage or acquires ownership after another
-  tab releases it. Only one tab can edit an analysis at a time.
+## Read the results
 
-The save indicator is independent of calculation success. **Saved** means the
-latest durable browser transaction completed. **Not saved** means work remains in
-memory and should be downloaded before closing. Browser storage is local to an
-origin and profile; clearing site data or losing the profile can remove it. JSON
-backups move work between devices, browsers, or local/Pages origins.
+- **Histogram** shows where simulated annual losses are concentrated. Frequency
+  and cost previews show the shapes of their distributions.
+- **CDF** means cumulative distribution function. At a given loss amount, the
+  curve shows the modeled probability of losing that amount or less. For example,
+  95% at $500,000 means a modeled 5% chance of exceeding $500,000 in a year.
+- **Central range (%)** selects the middle portion of modeled outcomes. A 90%
+  range runs from the 5th to the 95th percentile; outcomes can fall outside it.
+  This is a modeled outcome range, not a confidence interval for the accuracy of
+  your estimates.
+- **Outcome percentile** changes how much of the chart is visible so you can
+  inspect its main shape. It does not remove larger losses from the simulation.
 
-Annual-loss results are not included in backups. Opening or switching an analysis
-requires **Calculate / Recalculate annual loss** to regenerate those results.
-Typing, saving, and restoring do not automatically run annual-loss calculations.
+The results reflect your assumptions. They are not a forecast or a substitute for
+professional risk judgment. The app reports the random seed and number of simulated
+years so a calculation can be repeated with the same inputs and software versions.
 
-Keep sensitive backups outside this source repository or in its ignored
-`analysis-backups/` or `private/` directory. See [ANALYSIS_BACKUPS.md](ANALYSIS_BACKUPS.md)
-for the format, compatibility rules, and recovery limits.
+## Save your work and protect your data
 
-## Quick start
+On the public website, calculations run in your browser and entered estimates are
+not uploaded. When you run the app locally, Python performs calculations on your
+computer. There is no application backend service, account system, or telemetry.
 
-Install [uv](https://docs.astral.sh/uv/) and Python 3.11 or newer, then run:
+**Your analyses** lets you create, rename, duplicate, switch, and delete analyses.
+The app saves inputs, chart settings, and unfinished typing in your browser profile
+and reopens the last-used analysis. **Saved** confirms a durable browser save;
+**Not saved** means you should download your work before closing.
+
+- **Download analysis** saves one analysis as a readable `.analysis.json` file.
+- **Back up all analyses** downloads the readable library, including drafts.
+- **Import backup** adds analyses without overwriting existing ones.
+- **Recover previous session** restores an earlier checkpoint as a separate analysis.
+
+Browser saves are not encrypted by the app or synchronized between devices.
+Clearing site data or losing your browser profile can remove them. Use downloaded
+backups to move work between browsers, devices, or the public and local versions.
+Backups contain inputs, not calculated annual-loss results: calculate again after
+opening or switching an analysis. Only one tab can edit an analysis at a time.
+
+Backups may contain sensitive estimates and expert names. Keep them outside this
+source repository, or in its ignored `analysis-backups/` or `private/` directory.
+See the [backup and recovery guide](ANALYSIS_BACKUPS.md) for save-status details,
+recovery limits, and file-format compatibility.
+
+## Run on your computer
+
+Install [Git](https://git-scm.com/), [uv](https://docs.astral.sh/uv/), and Python 3.11
+or newer. Then run:
 
 ```bash
-uv sync
-uv run marimo edit app.py
-```
-
-The second command opens the notebook editor. To run the application in read-only
-mode instead:
-
-```bash
+git clone https://github.com/magoo/annual-loss-distribution.git
+cd annual-loss-distribution
+uv sync --locked
 uv run marimo run app.py
 ```
 
-## Development checks
-
-Run the same checks used by CI before opening a pull request:
-
-```bash
-uv run ruff format --check .
-uv run ruff check .
-uv run pytest
-uv run marimo check --strict app.py
-```
-
-Use `uv lock` after intentionally changing dependencies, and commit `uv.lock` so
-local and CI environments resolve the same versions.
-
-## GitHub Pages build and deployment
-
-Build the interactive browser app and run its Chromium and Firefox acceptance tests:
-
-```bash
-uv sync --locked
-uv run python scripts/build_pages.py
-uv run playwright install chromium firefox
-uv run pytest browser_tests
-```
-
-The tests serve the build at `/annual-loss-distribution/`, including its bundled
-local Python package. On Linux, use `playwright install --with-deps chromium firefox`
-to install the browsers' system dependencies as well.
-
-To preview the generated app manually:
-
-```bash
-uv run python -m http.server --bind 127.0.0.1 --directory dist
-```
-
-Open the printed HTTP address; opening `dist/index.html` directly will not work.
-First startup requires internet access and downloads the WebAssembly Python runtime
-and numerical packages from the same Pages site, so it takes longer than subsequent
-loads. No third-party CDN or package service is needed at runtime. Use a current
-Chromium or Firefox browser. Source editing is disabled in the published app.
-
-CI checks Python code, builds the app, and tests both browsers on pull requests.
-Successful runs on `main` deploy the same tested artifact through GitHub Pages;
-the CI workflow also supports manual redeployment. Generated `dist/` and Marimo
-session files remain ignored. The build publishes the app, assets, reviewed Python
-package, and checksum-verified browser dependencies, with no saved execution output.
-
-After deployment, run the same acceptance tests against the live site:
-
-```bash
-PAGES_TEST_URL=https://magoo.github.io/annual-loss-distribution/ uv run pytest browser_tests
-```
-
-The local exporter and Python environment are locked by `uv.lock`. The browser
-runtime is separately pinned in `scripts/browser-runtime.lock.json`: Pyodide
-314.0.0 / Python 3.14, NumPy 2.4.3, SciPy 1.17.1, and Plotly 6.9.0. The build downloads
-these files into an ignored cache, verifies every checksum, and includes their
-licenses. Browser tests block all third-party requests and enforce the notebook's
-declared dependency ranges. Repeatability is tested within each browser runtime;
-exact numerical identity across browser and native Python versions is not promised.
-
-## Architecture
-
-- `app.py` is the Git-friendly Marimo notebook and contains presentation and
-  interaction cells.
-- `annual_loss/` contains typed, importable modeling code with no dependency on
-  notebook state.
-- `tests/` covers deterministic behavior, statistical properties, validation,
-  workload limits, and reporting utilities.
-- [`docs/source-review.md`](docs/source-review.md) records the upstream feature
-  inventory, numerical semantics, review findings, and parity decisions.
-- [`AGENTS.md`](AGENTS.md) defines repository-wide working agreements for coding
-  agents and engineers.
-
-Marimo's reactive dataflow is used for input previews and presentation. The three
-workflow sections remain visible together so analysts can review or revise earlier
-assumptions without switching views. Expensive Monte Carlo work is gated by an
-explicit Calculate/Recalculate action so routine UI edits do not continually launch
-large simulations.
-
-## Numerical trust and reproducibility
-
-Production math uses NumPy and SciPy rather than custom probability or random-number
-implementations. Every Monte Carlo result carries an explicit seed and effective
-round count. Re-running the same validated inputs with the same seed must reproduce
-the same result within the same locked environment.
-
-Statistical parity with the upstream project means preserving its fitted
-distributions and simulation semantics; it does not mean reproducing its JavaScript
-PRNG sample stream byte-for-byte.
-
-The output is a model derived from elicited assumptions. It is not a guarantee,
-forecast, accounting opinion, or substitute for professional risk judgment.
+Open the local address shown in your terminal. This starts the application with
+editable analysis inputs. For notebook editing, development checks, architecture,
+and GitHub Pages builds, see the [contributor guide](CONTRIBUTING.md).
 
 ## Contributing
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md). Changes are expected to arrive through a
-reviewable Git branch, include tests proportional to their risk, and pass all CI
-checks.
+Bug reports, clearer explanations, and code contributions are welcome. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and checks. When reporting a
+modeling issue, include sanitized example inputs and the simulation seed; keep
+confidential scenarios and real incident data out of public issues.
+
+The [model specification](docs/source-review.md) explains the calculations,
+validation limits, and compatibility with the original application.
 
 ## Attribution and license
 
-This implementation is derived from the ISC-licensed
+Built with Python and [Marimo](https://marimo.io/), this implementation is derived
+from the ISC-licensed
 [original application](https://github.com/magoo/annual-loss-distribution/tree/53c864df0c9b7a8ef866858c7c27e2d43a67b864)
-by Ryan McGeehan. See [`LICENSE`](LICENSE).
+by Ryan McGeehan. See [LICENSE](LICENSE).
+
+The original Svelte/JavaScript application remains available in the repository
+history and the `legacy-svelte-2026-09-08` tag.

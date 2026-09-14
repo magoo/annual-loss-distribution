@@ -56,8 +56,8 @@ Imports validate the complete file before adding any analyses and reject files
 above 10 MiB, unknown versions, extra or missing schema fields, duplicate or invalid
 IDs, invalid modes, nonfinite numbers, and invalid field types. Structurally valid
 unfinished drafts and invalid model ranges are accepted for correction. Imported
-text is displayed as text and never executed. Budget files from
-`security-org-planning` are a different format and cannot be imported.
+text is displayed as text and never executed. Files from other applications cannot
+be imported; imports must use one of the annual-loss formats described above.
 
 A future format/model change must explicitly support the old version or provide a
 tested migration that keeps the original until the migrated copy is saved. Unknown
@@ -69,8 +69,9 @@ localStorage keys use `security-org-planning-annual-loss:analyses:v1:` followed 
 `analysis:<id>`, `checkpoint:<id>`, or `active`. The active pointer is a convenience,
 not a library index: records are enumerated directly. Corrupt records do not hide
 valid ones, and orphan checkpoints remain discoverable. These keys and the
-`security-org-planning-annual-loss-analyses` IndexedDB database are isolated from
-the budget app, even when both apps share a GitHub Pages origin.
+`security-org-planning-annual-loss-analyses` IndexedDB database use an
+application-specific namespace to avoid collisions with other apps on the same
+origin. These identifiers remain stable for compatibility with existing saves.
 
 Each edit writes a complete local recovery record immediately, then queues an
 IndexedDB transaction with strict durability. The indicator shows **Saved** only
